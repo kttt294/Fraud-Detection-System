@@ -7,21 +7,23 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # Thư mục lưu kết quả
-OUTPUT_DIR = '../data/outputs'
-PROCESSED_DIR = '../data/processed'
+OUTPUT_DIR = os.path.join(BASE_DIR, 'data', 'outputs')
+PROCESSED_DIR = os.path.join(BASE_DIR, 'data', 'processed')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 # 1. Load Dataset
 print("--- Loading Dataset ---")
 
-file_path = '../data/raw/creditcard.csv'
+file_path = os.path.join(BASE_DIR, 'data', 'raw', 'creditcard.csv')
 
 # Kiểm tra file sự tồn tại của file CSV
 if not os.path.exists(file_path):
-    print(f"[ERROR] Không tìm thấy file '{file_path}'.")
-    print("Vui lòng đảm bảo bạn đã giải nén file creditcard.zip vào thư mục data/raw/")
+    print(f"[ERROR] Không tìm thấy file tại '{file_path}'.")
+    print("Vui lòng giải nén file creditcard.zip vào thư mục data/raw/")
     exit()
 
 print(f"[INFO] Bắt đầu đọc dữ liệu từ: {file_path}")
@@ -75,26 +77,50 @@ print(top_corr_features)
 
 # Visualization 1: Phân phối của Class (Mất cân bằng)
 plt.figure(figsize=(8, 6))
-sns.countplot(x='Class', data=df, palette='viridis')
-plt.title('Phân phối Giao dịch: Hợp lệ (0) vs Gian lận (1)')
+ax = sns.countplot(x='Class', data=df, hue='Class', palette='viridis', legend=False)
+plt.title('Phân phối Giao dịch: Hợp lệ (0) vs Gian lận (1) (Log Scale)')
+
+# Thêm số lượng chính xác trên đầu mỗi cột
+for container in ax.containers:
+    ax.bar_label(container, padding=3, fontsize=11, fontweight='bold')
+
+# Sử dụng thang đo Log để có thể nhìn thấy cột của lớp 1
+plt.yscale('log') 
+plt.ylabel('Số lượng (Log Scale)')
+
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, 'distribution_class.png'))
 plt.close()
 print(f"\n[INFO] Đã lưu biểu đồ phân phối Class tại '{OUTPUT_DIR}/distribution_class.png'")
 
-# Visualization 2: Phân phối của Amount (Dòng tiền)
+# Visualization 2a: Phân phối của Amount (Dòng tiền - Thang đo Tuyến tính)
 plt.figure(figsize=(10, 6))
 sns.histplot(df['Amount'], kde=True, color='steelblue')
-plt.title('Phân phối của Số tiền Giao dịch (Amount)')
+plt.title('Phân phối Số tiền Giao dịch (Linear Scale)')
+plt.xlabel('Số tiền (Euro)', fontsize=12)
+plt.ylabel('Số lượng giao dịch', fontsize=12)
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, 'distribution_amount.png'))
 plt.close()
-print(f"[INFO] Đã lưu biểu đồ phân phối Amount tại '{OUTPUT_DIR}/distribution_amount.png'")
+print(f"[INFO] Đã lưu biểu đồ phân phối Amount (Linear) tại '{OUTPUT_DIR}/distribution_amount.png'")
+
+# Visualization 2b: Phân phối của Amount (Dòng tiền - Thang đo Logarithm)
+plt.figure(figsize=(10, 6))
+sns.histplot(df['Amount'] + 0.001, kde=True, color='mediumseagreen', log_scale=True)
+plt.title('Phân phối của Số tiền Giao dịch (Log Scale X)')
+plt.xlabel('Số tiền (Log Scale)')
+plt.ylabel('Số lượng')
+plt.tight_layout()
+plt.savefig(os.path.join(OUTPUT_DIR, 'distribution_amount_log.png'))
+plt.close()
+print(f"[INFO] Đã lưu biểu đồ phân phối Amount (Log) tại '{OUTPUT_DIR}/distribution_amount_log.png'")
 
 # Visualization 3: Boxplot Amount theo Class
 plt.figure(figsize=(8, 6))
-sns.boxplot(x='Class', y='Amount', data=df, palette='Set2')
-plt.title('Số tiền Giao dịch theo từng Class')
+sns.boxplot(x='Class', y='Amount', data=df, hue='Class', palette='Set2', legend=False)
+plt.title('So sánh Số tiền Giao dịch theo Loại (0 vs 1)', fontsize=14)
+plt.xlabel('Loại giao dịch (0: Hợp lệ, 1: Gian lận)', fontsize=12)
+plt.ylabel('Số tiền (Euro)', fontsize=12)
 plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, 'boxplot_amount_by_class.png'))
 plt.close()

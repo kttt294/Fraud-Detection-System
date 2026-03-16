@@ -214,9 +214,11 @@ data/processed/*
 # Ignore trained models (large binaries)
 modeling/*.pkl
 
-# Ignore real-time transaction logs from API
-data/outputs/transaction_history.json
+# Ignore real-time transaction logs from Backend
+data/outputs/logs.json
 
-# Local environment settings
+# Local environment settings and certificates
 .env
 .venv
+ca.pem
+deployment/certs/

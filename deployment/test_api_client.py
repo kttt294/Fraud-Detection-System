@@ -21,7 +21,7 @@ def test_api():
             print(f"Lỗi API: {response.status_code}")
             print(response.text)
     except Exception as e:
-        print(f"Không thể kết nối đến API. Đã bật api.py chưa?\nLỗi: {e}")
+        print(f"Không thể kết nối đến API. Đã bật backend.py chưa?\nLỗi: {e}")
 
 if __name__ == "__main__":
     test_api()

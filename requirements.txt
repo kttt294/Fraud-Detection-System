@@ -1,0 +1,19 @@
+# --- Core Data Science & ML ---
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+
+# --- Backend (FastAPI) ---
+fastapi
+uvicorn
+pydantic
+
+# --- Frontend (Streamlit) ---
+streamlit
+requests
+
+# --- Database & Environment ---
+psycopg2-binary
+python-dotenv
