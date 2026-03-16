@@ -8,7 +8,7 @@ import requests
 # Cấu hình trang
 st.set_page_config(
     page_title="SafeGuard Banking | Fraud Detection",
-    page_icon="🛡️",
+    page_icon=None,
     layout="wide"
 )
 
@@ -16,26 +16,20 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API_BASE_URL = "http://localhost:8000"
 
 # --- GIAO DIỆN CHÍNH ---
-st.title("🛡️ SafeGuard Banking | Fraud Analyst Operations Dashboard")
-st.markdown("""
-Welcome back, **Analyst**. Current System Status: <span style='color:green; font-weight:bold'>ACTIVE</span> | 
-Architecture: `Pure-Frontend (Decoupled)` | Backend: `FastAPI`
-""", unsafe_allow_html=True)
+st.title("SafeGuard Banking | Fraud Detection", anchor=False)
 
 # Danh sách cột bắt buộc
 FEATURE_COLUMNS = ['scaled_amount', 'scaled_time'] + [f'V{i}' for i in range(1, 29)]
 
 # --- Sidebar: Chọn dịch vụ ---
-st.sidebar.image("https://img.icons8.com/color/96/000000/shield.png")
-st.sidebar.header("Operations Menu")
-menu = st.sidebar.selectbox(
+st.sidebar.header("Operations Menu", anchor=False)
+menu = st.sidebar.radio(
     "Select Operation Mode:", 
-    ["🔍 Transaction Investigation", "📊 Periodic Batch Audit"]
+    ["Transaction Investigation", "Periodic Batch Audit"]
 )
 
-if menu == "🔍 Transaction Investigation":
-    st.subheader("🕵️ Deep Investigation Mode")
-    st.info("Dành cho chuyên viên điều tra các giao dịch bị hệ thống Core-Banking đánh dấu nghi vấn.")
+if menu == "Transaction Investigation":
+    st.subheader("Kiểm Tra Giao Dịch Thủ Công", anchor=False)
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -48,7 +42,7 @@ if menu == "🔍 Transaction Investigation":
         amount = st.number_input("Amount (Euro)", value=100.0)
         time_val = st.number_input("Time (s)", value=1000.0)
         
-    if st.button("🚀 Kiểm tra ngay"):
+    if st.button("Kiểm tra ngay"):
         v_features = [0.0] * 28
         v_map = {17: v17, 14: v14, 16: v16, 12: v12}
         for i, val in v_map.items():
@@ -59,23 +53,21 @@ if menu == "🔍 Transaction Investigation":
         try:
             res = requests.post(f"{API_BASE_URL}/verify", json=payload, timeout=5).json()
             if res['decision'] == "BLOCK":
-                st.error(f"⚠️ **CẢNH BÁO:** Hệ thống CHẶN giao dịch! (Xác suất gian lận: {res['fraud_probability']})")
-                st.image("https://img.icons8.com/color/96/000000/high-priority.png")
+                st.error(f"CẢNH BÁO: Hệ thống CHẶN giao dịch! (Xác suất gian lận: {res['fraud_probability']})")
             else:
-                st.success(f"✅ Giao dịch ĐƯỢC CHẤP THUẬN. (Xác suất: {res['fraud_probability']})")
-                st.image("https://img.icons8.com/color/96/000000/verified-badge.png")
+                st.success(f"Giao dịch ĐƯỢC CHẤP THUẬN. (Xác suất: {res['fraud_probability']})")
         except:
-            st.error("❌ Không thể kết nối tới Backend API (Port 8000).")
+            st.error("Không thể kết nối tới Backend API (Port 8000).")
 
-elif menu == "📊 Periodic Batch Audit":
-    st.subheader("📂 Batch Audit Interface")
+elif menu == "Periodic Batch Audit":
+    st.subheader("Kiểm Tra Giao Dịch Hàng Loạt", anchor=False)
     uploaded_file = st.file_uploader("Chọn file CSV giao dịch", type="csv")
     
     if uploaded_file is not None:
         df_upload = pd.read_csv(uploaded_file)
         st.write("Xem trước dữ liệu:", df_upload.head())
         
-        if st.button("🔍 Tiến hành phân tích File qua API"):
+        if st.button("Tiến hành phân tích File qua API"):
             # Chuyển đổi DataFrame thành format API yêu cầu
             transactions = []
             for _, row in df_upload.iterrows():
@@ -94,34 +86,12 @@ elif menu == "📊 Periodic Batch Audit":
                     if response.status_code == 200:
                         results = response.json()['predictions']
                         df_upload['Kết quả'] = results
-                        st.success("✅ Phân tích hoàn tất!")
+                        st.success("Phân tích hoàn tất!")
                         st.dataframe(df_upload)
                     else:
                         st.error(f"Lỗi API: {response.text}")
             except Exception as e:
                 st.error(f"Lỗi kết nối: {str(e)}")
 
-# --- THEO DÕI LIVE (Gọi từ API) ---
-st.sidebar.divider()
-st.sidebar.subheader("Live Monitor (via API)")
-
-try:
-    log_res = requests.get(f"{API_BASE_URL}/logs", timeout=3).json()
-    if log_res['status'] == "success":
-        for log in log_res['data']:
-            color = "red" if log['decision'] == "BLOCK" else "green"
-            st.sidebar.markdown(f"**{log['timestamp']}**")
-            st.sidebar.markdown(f"ID: `{log['transaction_id']}`")
-            st.sidebar.markdown(f"Status: <span style='color:{color}'>{log['decision']}</span> ({log['amount']}€)", unsafe_allow_html=True)
-            st.sidebar.divider()
-    else:
-        st.sidebar.info("Đang đợi dữ liệu từ Backend...")
-except:
-    st.sidebar.warning("⚠️ Không thể lấy log từ API.")
-
-if st.sidebar.button("🔄 Làm mới dữ liệu"):
-    st.rerun()
-
 # --- Footer ---
 st.divider()
-st.caption("© 2024 SafeGuard Banking Intelligence | Đội ngũ Phân tích Rủi ro")

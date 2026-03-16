@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 import pandas as pd
 import numpy as np
@@ -10,17 +11,38 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
-# Tự động xác định thư mục gốc của dự án
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Load biến môi trường từ .env
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
+# 0. Khởi tạo Lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS suspicious_activities (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP,
+                amount FLOAT,
+                decision TEXT,
+                fraud_probability TEXT
+            )
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("--- Database initialized---")
+    yield
+
 # 1. Khởi tạo ứng dụng FastAPI
 app = FastAPI(
     title="SafeGuard Banking Real-time API",
     description="Hệ thống lõi xử lý giao dịch tự động của ngân hàng",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # 2. Cấu hình mô hình
@@ -33,15 +55,16 @@ if os.path.exists(MODEL_PATH):
     with open(MODEL_PATH, 'rb') as f:
         model = pickle.load(f)
 
+# 4. Hàm kết nối Database
 def get_db_connection():
     try:
-        # Cấu hình SSL linh hoạt
+        # Cấu hình SSL cho kết nối PostgreSQL
         ssl_args = {"sslmode": os.getenv("DB_SSLMODE", "require")}
         ca_path = os.path.join(BASE_DIR, os.getenv("DB_CA_PATH") or "deployment/certs/ca.pem")
         
         if os.path.exists(ca_path):
             ssl_args["sslrootcert"] = ca_path
-            print(f"[INFO] Đang sử dụng chứng chỉ CA tại: {ca_path}")
+            print(f"[INFO] Đang sử dụng chứng chỉ xác thực CA tại: {ca_path}")
         else:
             print("[WARNING] Không tìm thấy file ca.pem. Cố gắng kết nối không có chứng chỉ xác thực...")
 
@@ -58,32 +81,10 @@ def get_db_connection():
         print(f"Lỗi kết nối DB: {e}")
         return None
 
-# Tạo bảng nếu chưa tồn tại
-@app.on_event("startup")
-async def startup_event():
-    conn = get_db_connection()
-    if conn:
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS transactions (
-                id SERIAL PRIMARY KEY,
-                transaction_id TEXT UNIQUE,
-                timestamp TIMESTAMP,
-                amount FLOAT,
-                decision TEXT,
-                fraud_probability TEXT,
-                processing_time_ms TEXT
-            )
-        """)
-        conn.commit()
-        cur.close()
-        conn.close()
-        print("--- Database initialized ---")
-
-# 5. Định nghĩa cấu trúc dữ liệu gửi đến (Schema)
+# 5. Định nghĩa khung dữ liệu đầu vào (API Schemas)
 class Transaction(BaseModel):
-    amount: float = Field(..., example=150.75)
-    time_offset: float = Field(..., example=1200.0)
+    amount: float = Field(...)
+    time_offset: float = Field(...)
     v_features: list[float] = Field(..., min_items=28, max_items=28)
 
 class BatchTransactions(BaseModel):
@@ -95,12 +96,12 @@ def home():
 
 @app.get("/logs")
 def get_logs():
-    """Lấy 5 giao dịch gần nhất từ Database cho Dashboard"""
+    """Lấy 5 giao dịch nghi vấn gần nhất từ Database."""
     conn = get_db_connection()
     if conn:
         try:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT timestamp, transaction_id, decision, amount, fraud_probability FROM transactions ORDER BY id DESC LIMIT 5")
+            cur.execute("SELECT id, timestamp, decision, amount, fraud_probability FROM suspicious_activities ORDER BY id DESC LIMIT 5")
             rows = cur.fetchall()
             cur.close()
             conn.close()
@@ -111,14 +112,9 @@ def get_logs():
 
 @app.post("/verify")
 async def verify_transaction(tx: Transaction):
-    """
-    API tiếp nhận giao dịch trực tiếp từ Máy POS, Web, App.
-    Trả về kết quả Chấp thuận hoặc Từ chối trong mili giây.
-    """
+    """API tiếp nhận giao dịch trực tiếp từ Máy POS, Web, App."""
     if model is None:
         raise HTTPException(status_code=500, detail="Model chưa được tải lên máy chủ.")
-    
-    start_time = time.time()
     
     try:
         # Chuẩn bị DataFrame đúng thứ tự mô hình yêu cầu
@@ -129,48 +125,46 @@ async def verify_transaction(tx: Transaction):
         prediction = int(model.predict(input_df)[0])
         probability = float(model.predict_proba(input_df)[0][1])
         
-        process_time = time.time() - start_time
-        
         # Logic nghiệp vụ: Nếu gian lận xác suất cao -> Từ chối ngay
         decision = "BLOCK" if prediction == 1 else "APPROVE"
         
         result = {
-            "transaction_id": f"TXN-{int(time.time()*1000)}",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "amount": tx.amount,
             "decision": decision,
-            "fraud_probability": f"{probability:.4%}",
-            "processing_time_ms": f"{process_time*1000:.2f}ms"
+            "fraud_probability": f"{probability:.4%}"
         }
 
-        # --- GHI VÀO POSTGRESQL (Aiven) ---
-        conn = get_db_connection()
-        if conn:
-            try:
-                cur = conn.cursor()
-                cur.execute("""
-                    INSERT INTO transactions (transaction_id, timestamp, amount, decision, fraud_probability, processing_time_ms)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (result['transaction_id'], result['timestamp'], result['amount'], result['decision'], result['fraud_probability'], result['processing_time_ms']))
-                conn.commit()
-                cur.close()
-                conn.close()
-            except Exception as db_err:
-                print(f"Lỗi khi ghi vào DB: {db_err}")
-
-        # --- GHI VÀO JSON (Dự phòng) ---
-        log_file = os.path.join(BASE_DIR, 'data', 'outputs', 'logs.json')
-        logs = []
-        if os.path.exists(log_file):
-            with open(log_file, 'r') as f:
+        # --- CHỈ LƯU VẾT NẾU GIAO DỊCH BỊ NGHI VẤN (BLOCK) ---
+        if decision == "BLOCK":
+            # 1. Ghi vào PostgreSQL
+            conn = get_db_connection()
+            if conn:
                 try:
-                    logs = json.load(f)
-                except:
-                    logs = []
-        
-        logs.append(result)
-        with open(log_file, 'w') as f:
-            json.dump(logs[-100:], f, indent=4)
+                    cur = conn.cursor()
+                    cur.execute("""
+                        INSERT INTO suspicious_activities (timestamp, amount, decision, fraud_probability)
+                        VALUES (%s, %s, %s, %s)
+                    """, (result['timestamp'], result['amount'], result['decision'], result['fraud_probability']))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                except Exception as db_err:
+                    print(f"Lỗi khi ghi vào DB: {db_err}")
+
+            # 2. Ghi vào JSON (Dự phòng)
+            log_file = os.path.join(BASE_DIR, 'data', 'outputs', 'logs.json')
+            logs = []
+            if os.path.exists(log_file):
+                with open(log_file, 'r') as f:
+                    try:
+                        logs = json.load(f)
+                    except:
+                        logs = []
+            
+            logs.append(result)
+            with open(log_file, 'w') as f:
+                json.dump(logs[-100:], f, indent=4)
         
         return result
         
@@ -191,9 +185,7 @@ async def verify_batch(batch: BatchTransactions):
         
         input_df = pd.DataFrame(data_list, columns=FEATURE_COLUMNS)
         
-        # Dự đoán hàng loạt
         predictions = model.predict(input_df)
-        # Chuyển thành text để trả về
         results = ["GIAN LẬN" if p == 1 else "Hợp lệ" for p in predictions]
         
         return {"status": "success", "predictions": results}
