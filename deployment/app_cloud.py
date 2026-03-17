@@ -201,6 +201,11 @@ CSS_EMBEDDED = """
     transform: scale(1.1) !important;
 }
 
+/* Tinh chỉnh padding cho input trên Cloud */
+[data-testid="stNumberInput"] > div {
+    margin-top: 0 !important;
+}
+
 span[data-baseweb="tag"], button[aria-label="Clear all"] {
     display: none !important;
 }
@@ -252,6 +257,7 @@ def get_db_pool():
     try:
         host = os.getenv("DB_HOST")
         if not host: return None
+        
         ssl_mode = os.getenv("DB_SSLMODE", "require")
         ca_path = os.getenv("DB_CA_PATH", "deployment/certs/ca.pem")
         
@@ -268,7 +274,7 @@ def get_db_pool():
         if os.path.exists(ca_path) and ssl_mode == "require":
             params["sslrootcert"] = ca_path
         elif ssl_mode == "require":
-            # Nếu yêu cầu require nhưng không tìm thấy file CA, hạ cấp xuống allow để tránh lỗi treo app
+            # Nếu yêu cầu require nhưng không tìm thấy file CA, hạ cấp xuống allow để tránh lỗi
             params["sslmode"] = "allow"
 
         return pool.SimpleConnectionPool(1, 20, **params)
@@ -483,14 +489,14 @@ with col_right:
                 v_cols = st.columns(4)
                 for i, v_name in enumerate(selected_vs):
                     with v_cols[i % 4]:
-                        st.markdown(f"""
-                            <div class="v-feature-row">
-                                <span class="feature-name">{v_name}</span>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        if st.button("✕", key=f"del_{v_name}_cloud", type="secondary"):
-                            st.session_state.v_multi_cloud.remove(v_name)
-                            st.rerun()
+                        # Layout ổn định cho Header + Button
+                        h_col, b_col = st.columns([3, 1])
+                        with h_col:
+                            st.markdown(f'<span class="feature-name">{v_name}</span>', unsafe_allow_html=True)
+                        with b_col:
+                            if st.button("✕", key=f"del_{v_name}_cloud", type="secondary"):
+                                st.session_state.v_multi_cloud.remove(v_name)
+                                st.rerun()
                         st.number_input(v_name, value=0.0, step=None, label_visibility="collapsed", key=f"val_{v_name}_cloud")
 
             st.markdown("<br>", unsafe_allow_html=True)
@@ -512,24 +518,26 @@ with col_right:
             if up:
                 df = load_csv_data(up)
                 st.dataframe(df.head(), use_container_width=True)
-                st.markdown('<div class="center-btn">', unsafe_allow_html=True)
-                if st.button("Quét toàn bộ tập tin", type="primary", key="scan_cloud"):
-                    with st.spinner("Đang phân tích hàng loạt..."):
-                        # Nhận diện cột
-                        amt_col = 'Amount' if 'Amount' in df.columns else 'scaled_amount'
-                        time_col = 'Time' if 'Time' in df.columns else 'scaled_time'
-                        
-                        batch_size = 100_000
-                        fraud_total = 0
-                        total_rows = len(df)
-                        
-                        for start_idx in range(0, total_rows, batch_size):
-                            end_idx = min(start_idx + batch_size, total_rows)
-                            batch_df = df.iloc[start_idx:end_idx]
+                
+                # Căn giữa nút Quét file bằng columns
+                _, btn_center, _ = st.columns([1, 2, 1])
+                with btn_center:
+                    if st.button("Quét toàn bộ tập tin", type="primary", key="scan_cloud", use_container_width=True):
+                        with st.spinner("Đang phân tích hàng loạt..."):
+                            # Nhận diện cột
+                            amt_col = 'Amount' if 'Amount' in df.columns else 'scaled_amount'
+                            time_col = 'Time' if 'Time' in df.columns else 'scaled_time'
                             
-                            fraud_total += process_bulk_cloud(batch_df, amt_col, time_col)
-                        
-                        st.success(f"Hoàn tất! Đã xử lý {total_rows:,} giao dịch. Phát hiện {fraud_total} vụ gian lận.")
-                st.markdown('</div>', unsafe_allow_html=True)
+                            batch_size = 100_000
+                            fraud_total = 0
+                            total_rows = len(df)
+                            
+                            for start_idx in range(0, total_rows, batch_size):
+                                end_idx = min(start_idx + batch_size, total_rows)
+                                batch_df = df.iloc[start_idx:end_idx]
+                                
+                                fraud_total += process_bulk_cloud(batch_df, amt_col, time_col)
+                            
+                            st.success(f"Hoàn tất! Đã xử lý {total_rows:,} giao dịch. Phát hiện {fraud_total} vụ gian lận.")
 
     analysis_center_cloud()
