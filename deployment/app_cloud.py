@@ -18,7 +18,7 @@ from datetime import datetime
 
 # --- 1. CONFIG & SETUP ---
 load_dotenv()
-st.set_page_config(page_title="SafeGuard Banking | Monitoring Dashboard", layout="wide")
+st.set_page_config(page_title="SafeGuard Banking - Credit Card Fraud Detection", layout="wide")
 
 # NHÚNG TOÀN BỘ CSS
 CSS_EMBEDDED = """
@@ -409,7 +409,7 @@ def load_csv_data(file):
 # Header Cố định
 st.markdown("""
 <div class="custom-header">
-    <div class="header-branding">SafeGuard Banking | Monitoring Dashboard</div>
+    <div class="header-branding">SafeGuard Banking</div>
     <div class="header-right">
         <div class="header-icons">
             <div class="icon-wrapper" style="margin-right: 15px;">
