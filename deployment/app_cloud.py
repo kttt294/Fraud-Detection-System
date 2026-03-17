@@ -13,6 +13,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 import time
+import requests
 from datetime import datetime
 
 # --- 1. CONFIG & SETUP ---
@@ -209,12 +210,32 @@ FEATURE_COLUMNS = ['scaled_amount', 'scaled_time'] + [f'V{i}' for i in range(1, 
 
 @st.cache_resource
 def load_model():
+    model_path = 'modeling/model.pkl'
+    model_url = "https://github.com/kttt294/SafeGuard-Fraud-Detection-System/releases/download/v1.0.0/model.pkl"
+    
     try:
-        if os.path.exists('modeling/model.pkl'):
-            with open('modeling/model.pkl', 'rb') as f:
+        if not os.path.exists(model_path):
+            if not model_url:
+                st.error("Chưa cấu hình MODEL_URL trong Secrets! Không thể tải mô hình AI.")
+                return None
+            
+            os.makedirs('modeling', exist_ok=True)
+            with st.spinner("Đang tải mô hình AI từ GitHub Release (chỉ thực hiện lần đầu)..."):
+                response = requests.get(model_url, stream=True)
+                if response.status_code == 200:
+                    with open(model_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                else:
+                    st.error(f"Lỗi khi tải model: HTTP {response.status_code}")
+                    return None
+
+        if os.path.exists(model_path):
+            with open(model_path, 'rb') as f:
                 return pickle.load(f)
-        return None
-    except: return None
+    except Exception as e:
+        st.error(f"Lỗi khởi tạo mô hình: {e}")
+    return None
 
 model = load_model()
 
@@ -224,15 +245,26 @@ def get_db_pool():
     try:
         host = os.getenv("DB_HOST")
         if not host: return None
-        return pool.SimpleConnectionPool(
-            1, 20,
-            host=host,
-            port=os.getenv("DB_PORT"),
-            database=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            sslmode=os.getenv("DB_SSLMODE", "require")
-        )
+        ssl_mode = os.getenv("DB_SSLMODE", "require")
+        ca_path = os.getenv("DB_CA_PATH", "deployment/certs/ca.pem")
+        
+        params = {
+            "host": host,
+            "port": os.getenv("DB_PORT"),
+            "database": os.getenv("DB_NAME"),
+            "user": os.getenv("DB_USER"),
+            "password": os.getenv("DB_PASSWORD"),
+            "sslmode": ssl_mode
+        }
+        
+        # Nếu có file certificate thì mới dùng sslrootcert
+        if os.path.exists(ca_path) and ssl_mode == "require":
+            params["sslrootcert"] = ca_path
+        elif ssl_mode == "require":
+            # Nếu yêu cầu require nhưng không tìm thấy file CA, hạ cấp xuống allow để tránh lỗi treo app
+            params["sslmode"] = "allow"
+
+        return pool.SimpleConnectionPool(1, 20, **params)
     except: return None
 
 @st.cache_resource

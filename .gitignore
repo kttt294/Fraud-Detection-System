@@ -220,5 +220,3 @@ data/outputs/logs.json
 # Local environment settings and certificates
 .env
 .venv
-ca.pem
-deployment/certs/

@@ -4,6 +4,7 @@ numpy
 scikit-learn
 matplotlib
 seaborn
+altair<5
 
 # --- Backend (FastAPI) ---
 fastapi
@@ -11,7 +12,7 @@ uvicorn
 pydantic
 
 # --- Frontend (Streamlit) ---
-streamlit
+streamlit>=1.31.0
 requests
 
 # --- Database & Environment ---
