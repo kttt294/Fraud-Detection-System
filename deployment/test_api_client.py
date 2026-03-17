@@ -7,7 +7,7 @@ def test_api():
     # Giả lập một giao dịch (Sử dụng các giá trị V ngẫu nhiên)
     payload = {
         "amount": 2500.0,
-        "time_offset": 45000.0,
+        "time_val": 45000.0,
         "v_features": [0.1] * 28  # Giả lập 28 đặc trưng V
     }
     

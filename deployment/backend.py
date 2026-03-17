@@ -67,6 +67,16 @@ if os.path.exists(MODEL_PATH):
         model = pickle.load(f)
     print(f"--- Model loaded successfully from {MODEL_PATH} ---")
 
+# LOAD SCALER
+SCALER_PATH = os.path.join(BASE_DIR, 'modeling', 'scaler.pkl')
+scaler = None
+if os.path.exists(SCALER_PATH):
+    with open(SCALER_PATH, 'rb') as f:
+        scaler = pickle.load(f)
+    print(f"--- Scaler loaded successfully from {SCALER_PATH} ---")
+else:
+    print(f"⚠️ Warning: Scaler Not Found at {SCALER_PATH}")
+
 def get_db_connection():
     try:
         conn = psycopg2.connect(
@@ -117,9 +127,19 @@ async def verify_bulk(payload: BulkTransactions):
         raise HTTPException(status_code=500, detail="Mô hình AI chưa sẵn sàng.")
     
     try:
-        # 1. Chuyển đổi list objects sang DataFrame mảng (Tối ưu dùng list comprehension)
-        data_list = [[tx.amount/100, tx.time_val/1000] + tx.v_features for tx in payload.transactions]
-        df_batch = pd.DataFrame(data_list, columns=FEATURE_COLUMNS)
+        # 1. Chuyển đổi và Scale dữ liệu
+        if scaler:
+            # Scale dùng RobustScaler
+            data_raw = [[tx.amount, tx.time_val] for tx in payload.transactions]
+            X_scaled = scaler.transform(data_raw)
+            # Ghép với V features
+            v_data = [tx.v_features for tx in payload.transactions]
+            data_final = np.hstack([X_scaled, v_data])
+        else:
+            # Fallback
+            data_final = [[tx.amount/100, tx.time_val/1000] + tx.v_features for tx in payload.transactions]
+            
+        df_batch = pd.DataFrame(data_final, columns=FEATURE_COLUMNS)
         
         # 2. AI Dự đoán đồng loạt
         probs = model.predict_proba(df_batch)[:, 1]
@@ -166,7 +186,14 @@ async def verify_transaction(tx: Transaction):
     
     try:
         # Chuẩn bị dữ liệu (Standardizing logic)
-        input_data = [tx.amount/100, tx.time_val/1000] + tx.v_features
+        if scaler:
+            scaled_amt = float(scaler.transform([[tx.amount]])[0][0])
+            scaled_time = float(scaler.transform([[tx.time_val]])[0][0])
+        else:
+            scaled_amt = tx.amount / 100
+            scaled_time = tx.time_val / 1000
+            
+        input_data = [scaled_amt, scaled_time] + tx.v_features
         input_df = pd.DataFrame([input_data], columns=FEATURE_COLUMNS)
         
         prob = float(model.predict_proba(input_df)[0][1])
