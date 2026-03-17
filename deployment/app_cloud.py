@@ -423,7 +423,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-col_left, col_sep, col_right = st.columns([0.9, 0.1, 3.0])
+col_left, col_sep, col_right = st.columns([1.2, 0.1, 2.7])
 
 # CỘT TRÁI: LIVE MONITORING
 with col_left:
