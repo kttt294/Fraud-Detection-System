@@ -11,6 +11,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
 from dotenv import load_dotenv
 from datetime import datetime
+import warnings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
@@ -21,21 +22,32 @@ async def lifespan(app: FastAPI):
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        # Tạo bảng logs thống nhất cho cả Dashboard và API
+        # 1. Bảng cho External API (Giao dịch thực tế)
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS fraud_logs (
+            CREATE TABLE IF NOT EXISTS api_fraud_logs (
                 id SERIAL PRIMARY KEY,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 amount FLOAT,
                 time_val FLOAT,
                 fraud_probability FLOAT,
-                source TEXT DEFAULT 'HỆ THỐNG'
+                source TEXT DEFAULT 'API (User App)'
+            )
+        """)
+        # 2. Bảng cho Dashboard (Phân tích nội bộ)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS system_fraud_logs (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                amount FLOAT,
+                time_val FLOAT,
+                fraud_probability FLOAT,
+                source TEXT DEFAULT 'Dashboard System'
             )
         """)
         conn.commit()
         cur.close()
         conn.close()
-        print("--- Database initialized with fraud_logs table ---")
+        print("--- Database initialized with api_fraud_logs and system_fraud_logs tables ---")
     yield
 
 app = FastAPI(
@@ -85,12 +97,13 @@ def health_check():
 
 @app.get("/alerts")
 def get_alerts(limit: int = 10):
-    """Lấy danh sách cảnh báo mới nhất cho Dashboard."""
+    """Lấy danh sách cảnh báo từ App người dùng (Thực tế)."""
     conn = get_db_connection()
     if not conn: return {"error": "DB_CONNECTION_FAILED"}
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, fraud_probability, created_at, source FROM fraud_logs ORDER BY created_at DESC LIMIT %s", (limit,))
+        # Chỉ lấy từ bảng API thực tế
+        cur.execute("SELECT amount, fraud_probability, created_at, source FROM api_fraud_logs ORDER BY created_at DESC LIMIT %s", (limit,))
         rows = cur.fetchall()
         cur.close(); conn.close()
         return {"status": "success", "data": rows}
@@ -104,17 +117,12 @@ async def verify_bulk(payload: BulkTransactions):
         raise HTTPException(status_code=500, detail="Mô hình AI chưa sẵn sàng.")
     
     try:
-        # 1. Chuyển đổi list objects sang DataFrame để xử lý mảng
-        data_list = []
-        for tx in payload.transactions:
-            row = [tx.amount/100, tx.time_val/1000] + tx.v_features
-            data_list.append(row)
-        
+        # 1. Chuyển đổi list objects sang DataFrame mảng (Tối ưu dùng list comprehension)
+        data_list = [[tx.amount/100, tx.time_val/1000] + tx.v_features for tx in payload.transactions]
         df_batch = pd.DataFrame(data_list, columns=FEATURE_COLUMNS)
         
         # 2. AI Dự đoán đồng loạt
-        # Sử dụng .values để tránh UserWarning về tên cột
-        probs = model.predict_proba(df_batch.values)[:, 1]
+        probs = model.predict_proba(df_batch)[:, 1]
         
         # 3. Lọc lấy gian lận
         fraud_indices = np.where(probs > 0.5)[0]
@@ -126,13 +134,15 @@ async def verify_bulk(payload: BulkTransactions):
             if conn:
                 from psycopg2.extras import execute_values
                 cur = conn.cursor()
-                insert_data = []
-                for idx in fraud_indices:
-                    tx = payload.transactions[idx]
-                    insert_data.append((tx.amount, tx.time_val, float(probs[idx]), tx.source))
+                # Tối ưu: Dùng list comprehension để chuẩn bị data
+                insert_data = [
+                    (payload.transactions[idx].amount, payload.transactions[idx].time_val, float(probs[idx]), payload.transactions[idx].source)
+                    for idx in fraud_indices
+                ]
                 
+                # Lưu vào bảng SYSTEM vì đây là quét file từ Dashboard
                 execute_values(cur, 
-                    "INSERT INTO fraud_logs (amount, time_val, fraud_probability, source) VALUES %s", 
+                    "INSERT INTO system_fraud_logs (amount, time_val, fraud_probability, source) VALUES %s", 
                     insert_data)
                 conn.commit()
                 cur.close(); conn.close()
@@ -166,9 +176,13 @@ async def verify_transaction(tx: Transaction):
         if prediction == 1:
             conn = get_db_connection()
             if conn:
+                # Phân loại bảng dựa trên nguồn gốc giao dịch
+                is_system = "HỆ THỐNG" in str(tx.source).upper() or "THỦ CÔNG" in str(tx.source).upper() or "QUÉT" in str(tx.source).upper()
+                target_table = "system_fraud_logs" if is_system else "api_fraud_logs"
+                
                 cur = conn.cursor()
                 cur.execute(
-                    "INSERT INTO fraud_logs (amount, time_val, fraud_probability, source) VALUES (%s, %s, %s, %s)",
+                    f"INSERT INTO {target_table} (amount, time_val, fraud_probability, source) VALUES (%s, %s, %s, %s)",
                     (tx.amount, tx.time_val, prob, tx.source)
                 )
                 conn.commit()

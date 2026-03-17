@@ -60,9 +60,7 @@ with col_left:
         try:
             response = requests.get(f"{API_BASE_URL}/alerts?limit=8", timeout=2)
             if response.status_code == 200:
-                alerts = response.json().get('data', [])
-                # Chỉ lọc những source KHÔNG phải là hệ thống
-                api_alerts = [a for a in alerts if "HỆ THỐNG" not in str(a.get('source', '')).upper()]
+                api_alerts = response.json().get('data', [])
                 
                 if not api_alerts:
                     st.info("Chưa có cảnh báo nào từ API...")
@@ -104,6 +102,7 @@ with col_right:
         tab1, tab2 = st.tabs(["Kiểm Tra Thủ Công", "Tải Lên File"])
         
         with tab1:
+            st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
             c_base1, c_base2 = st.columns(2)
             with c_base1: st.number_input("Số tiền", value=100.0, step=None, key="amt_front")
             with c_base2: st.number_input("Thời gian", value=1000.0, step=None, key="time_front")
@@ -134,53 +133,60 @@ with col_right:
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("Bắt đầu phân tích", type="primary", key="btn_front"):
-                payload = {
-                    "amount": st.session_state.amt_front,
-                    "time_val": st.session_state.time_front,
-                    "v_features": [0.0]*28,
-                    "source": "HỆ THỐNG (Manual)"
-                }
-                # Thu thập tất cả các V-features đã chọn
-                for v_name in selected_vs:
-                    v_idx = int(v_name[1:])
-                    payload["v_features"][v_idx-1] = st.session_state[f"val_{v_name}_front"]
-                
-                try:
-                    res = requests.post(f"{API_BASE_URL}/verify", json=payload, timeout=5).json()
-                    if res.get("decision") == "BLOCK":
-                        st.error(f"KẾT QUẢ: GIAN LẬN ({res.get('probability')})")
-                    else:
-                        st.success(f"KẾT QUẢ: HỢP LỆ ({res.get('probability')})")
-                except:
-                    st.error("Không thể kết nối đến Backend API!")
+                with st.spinner("Đang phân tích..."):
+                    payload = {
+                        "amount": st.session_state.amt_front,
+                        "time_val": st.session_state.time_front,
+                        "v_features": [0.0]*28,
+                        "source": "Phân tích Thủ công"
+                    }
+                    # Thu thập tất cả các V-features đã chọn
+                    for v_name in selected_vs:
+                        v_idx = int(v_name[1:])
+                        payload["v_features"][v_idx-1] = st.session_state[f"val_{v_name}_front"]
+                    
+                    try:
+                        res = requests.post(f"{API_BASE_URL}/verify", json=payload, timeout=5).json()
+                        if res.get("decision") == "BLOCK":
+                            st.error(f"Kết quả: GIAN LẬN ({res.get('probability')} gian lận)")
+                        else:
+                            st.success(f"Kết quả: HỢP LỆ ({res.get('probability')} gian lận)")
+                    except:
+                        st.error("Không thể kết nối đến Backend API!")
         
         with tab2:
             up = st.file_uploader("Chọn file CSV", type="csv", key="file_front", label_visibility="collapsed")
             if up:
                 df = load_csv_data(up)
                 st.dataframe(df.head(), use_container_width=True)
-                if st.button("Quét toàn bộ tập tin", key="scan_front"):
+                if st.button("Quét toàn bộ tập tin", key="scan_front", type="primary"):
                     with st.spinner("Đang phân tích..."):
                         # Tự động nhận diện cột
                         amt_col = 'Amount' if 'Amount' in df.columns else 'scaled_amount'
                         time_col = 'Time' if 'Time' in df.columns else 'scaled_time'
                         
-                        batch_size = 30000
+                        batch_size = 100_000
                         fraud_count = 0
                         total = len(df)
+                        v_cols = [f'V{i}' for i in range(1, 28 + 1)]
                         
                         for start_idx in range(0, total, batch_size):
                             end_idx = min(start_idx + batch_size, total)
                             batch_df = df.iloc[start_idx:end_idx]
                             
+                            # Tối ưu: Chuyển sang dict trực tiếp từ DataFrame thay vì dùng iterrows
                             transactions = []
-                            for _, row in batch_df.iterrows():
-                                v_feats = [float(row.get(f'V{j}', 0)) for j in range(1, 29)]
+                            # chuẩn bị dữ liệu mảng V
+                            v_array = batch_df[v_cols].values.tolist()
+                            amounts = batch_df[amt_col].values.astype(float)
+                            times = batch_df[time_col].values.astype(float)
+                            
+                            for i in range(len(batch_df)):
                                 transactions.append({
-                                    "amount": float(row.get(amt_col, 0)),
-                                    "time_val": float(row.get(time_col, 0)),
-                                    "v_features": v_feats,
-                                    "source": "HỆ THỐNG (Bulk)"
+                                    "amount": amounts[i],
+                                    "time_val": times[i],
+                                    "v_features": v_array[i],
+                                    "source": "Quét tập tin"
                                 })
                             
                             try:

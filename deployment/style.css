@@ -143,6 +143,7 @@
 [data-testid="stNumberInput"] {
     max-width: 160px !important;
     margin-bottom: 10px !important;
+    margin-top: -20px !important;
 }
 
 /* Nút bấm (Flat Design & Căn giữa) */
@@ -152,11 +153,21 @@
 }
 
 .stButton > button[data-testid="stBaseButton-primary"] {
-    min-width: 250px !important; 
+    min-width: 200px !important; 
     background-color: #38bdf8 !important;
     color: white !important; border-radius: 6px !important;
     border: none !important; font-weight: 600 !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Thu nhỏ và căn giữa vùng tải file */
+[data-testid="stFileUploader"] {
+    width: 70% !important;
+    margin: 0 auto !important;
+}
+
+.stButton > button:active {
+    transform: scale(0.98) !important;
 }
 
 /* Hàng tiêu đề cho mỗi đặc trưng (Tên + Nút Xóa) */
@@ -198,6 +209,7 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    transition: all 0.2s ease !important;
 }
 
 .stButton > button[data-testid="stBaseButton-secondary"]:hover {

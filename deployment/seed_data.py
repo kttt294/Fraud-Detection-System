@@ -33,7 +33,7 @@ def seed_database():
             created_at = datetime.now() - timedelta(minutes=random.randint(1, 60))
             
             cur.execute(
-                "INSERT INTO fraud_logs (amount, time_val, fraud_probability, source, created_at) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO api_fraud_logs (amount, time_val, fraud_probability, source, created_at) VALUES (%s, %s, %s, %s, %s)",
                 (amount, time_val, prob, source, created_at)
             )
         

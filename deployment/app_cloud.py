@@ -8,7 +8,9 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+import shutil
 import psycopg2
+from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 import time
 from datetime import datetime
@@ -120,6 +122,7 @@ CSS_EMBEDDED = """
 [data-testid="stNumberInput"] {
     max-width: 160px !important;
     margin-bottom: 10px !important;
+    margin-top: -20px !important;
 }
 
 .stButton {
@@ -128,10 +131,21 @@ CSS_EMBEDDED = """
 }
 
 .stButton > button[data-testid="stBaseButton-primary"] {
-    min-width: 250px !important; 
+    min-width: 200px !important; 
     background-color: #38bdf8 !important;
     color: white !important; border-radius: 6px !important;
     border: none !important; font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Thu nhỏ và căn giữa vùng tải file */
+[data-testid="stFileUploader"] {
+    width: 70% !important;
+    margin: 0 auto !important;
+}
+
+.stButton > button:active {
+    transform: scale(0.98) !important;
 }
 
 .v-feature-row {
@@ -171,6 +185,7 @@ CSS_EMBEDDED = """
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    transition: all 0.2s ease !important;
 }
 
 .stButton > button[data-testid="stBaseButton-secondary"]:hover {
@@ -195,8 +210,8 @@ FEATURE_COLUMNS = ['scaled_amount', 'scaled_time'] + [f'V{i}' for i in range(1, 
 @st.cache_resource
 def load_model():
     try:
-        if os.path.exists('modeling/fraud_model.pkl'):
-            with open('modeling/fraud_model.pkl', 'rb') as f:
+        if os.path.exists('modeling/model.pkl'):
+            with open('modeling/model.pkl', 'rb') as f:
                 return pickle.load(f)
         return None
     except: return None
@@ -220,7 +235,39 @@ def get_db_pool():
         )
     except: return None
 
-db_pool = get_db_pool()
+@st.cache_resource
+def init_db_cloud():
+    conn = None
+    try:
+        conn = get_db_pool().getconn()
+        cur = conn.cursor()
+        # 1. Bảng API
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS api_fraud_logs (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                amount FLOAT,
+                time_val FLOAT,
+                fraud_probability FLOAT,
+                source TEXT DEFAULT 'API (User App)'
+            )
+        """)
+        # 2. Bảng System
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS system_fraud_logs (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                amount FLOAT,
+                time_val FLOAT,
+                fraud_probability FLOAT,
+                source TEXT DEFAULT 'Dashboard System'
+            )
+        """)
+        conn.commit()
+        cur.close()
+    except: pass
+    finally:
+        if conn: release_db_connection(conn)
 
 def get_db_connection():
     if db_pool: return db_pool.getconn()
@@ -229,13 +276,17 @@ def get_db_connection():
 def release_db_connection(conn):
     if db_pool and conn: db_pool.putconn(conn)
 
+db_pool = get_db_pool()
+if db_pool: init_db_cloud()
+
 def get_api_alerts():
     conn = None
     try:
         conn = get_db_connection()
         if conn:
             cur = conn.cursor()
-            cur.execute("SELECT amount, fraud_probability, created_at, source FROM fraud_logs WHERE source NOT LIKE 'HỆ THỐNG%' ORDER BY created_at DESC LIMIT 8")
+            # Chỉ lấy log từ bảng API (Giao dịch thực tế)
+            cur.execute("SELECT amount, fraud_probability, created_at, source FROM api_fraud_logs ORDER BY created_at DESC LIMIT 8")
             rows = cur.fetchall()
             cur.close()
             return rows
@@ -257,7 +308,7 @@ def process_prediction(amount, time_val, v_features, source="HỆ THỐNG (Manua
                 conn = get_db_connection()
                 if conn:
                     cur = conn.cursor()
-                    cur.execute("INSERT INTO fraud_logs (amount, time_val, fraud_probability, source) VALUES (%s, %s, %s, %s)", (amount, time_val, prob, source))
+                    cur.execute("INSERT INTO system_fraud_logs (amount, time_val, fraud_probability, source) VALUES (%s, %s, %s, %s)", (amount, time_val, prob, source))
                     conn.commit()
                     cur.close()
             return {"decision": decision, "prob": f"{prob:.2%}"}
@@ -265,6 +316,50 @@ def process_prediction(amount, time_val, v_features, source="HỆ THỐNG (Manua
         finally:
             if conn: release_db_connection(conn)
     return None
+
+def process_bulk_cloud(df, amt_col, time_col, source="HỆ THỐNG (Bulk)"):
+    if not model: return 0
+    
+    # 1. Chuẩn bị mảng dữ liệu (Vectorized)
+    # Scale Amount và Time giống logic model
+    X = df[[amt_col, time_col]].values / [100.0, 1000.0]
+    V = df[[f'V{i}' for i in range(1, 29)]].values
+    input_array = np.hstack([X, V])
+    
+    # 2. AI Dự đoán
+    probs = model.predict_proba(input_array)[:, 1]
+    fraud_indices = np.where(probs > 0.5)[0]
+    fraud_count = len(fraud_indices)
+    
+    # 3. Lưu vào DB hàng loạt nếu có gian lận
+    if fraud_count > 0:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if conn:
+                cur = conn.cursor()
+                # Tối ưu: Dùng list comprehension thay vì lặp iloc (iloc bên trong loop rất chậm)
+                # Lấy các giá trị cần thiết ra mảng trước
+                selected_rows = df.iloc[fraud_indices]
+                amounts = selected_rows[amt_col].values
+                times = selected_rows[time_col].values
+                fraud_probs = probs[fraud_indices]
+                
+                insert_data = [
+                    (float(amounts[i]), float(times[i]), float(fraud_probs[i]), source)
+                    for i in range(len(fraud_indices))
+                ]
+                
+                execute_values(cur, 
+                    "INSERT INTO system_fraud_logs (amount, time_val, fraud_probability, source) VALUES %s", 
+                    insert_data)
+                conn.commit()
+                cur.close()
+        except: pass
+        finally:
+            if conn: release_db_connection(conn)
+            
+    return fraud_count
 
 @st.cache_data
 def load_csv_data(file):
@@ -304,6 +399,7 @@ with col_left:
     def live_monitoring_panel():
         st.markdown('<div class="live-monitor-title"><span class="live-dot"></span> Giám sát Realtime</div>', unsafe_allow_html=True)
         alerts = get_api_alerts()
+        
         if not alerts:
             st.info("Chưa có cảnh báo nào từ API...")
         else:
@@ -332,6 +428,7 @@ with col_right:
         tab1, tab2 = st.tabs(["Kiểm Tra Thủ Công", "Tải Lên File"])
         
         with tab1:
+            st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
             c_base1, c_base2 = st.columns(2)
             with c_base1: st.number_input("Số tiền", value=100.0, step=None, key="amt_cloud")
             with c_base2: st.number_input("Thời gian", value=1000.0, step=None, key="time_cloud")
@@ -359,23 +456,39 @@ with col_right:
 
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("Bắt đầu phân tích", type="primary", key="btn_cloud"):
-                v_feats = [0.0]*28
-                for v_name in selected_vs:
-                    v_idx = int(v_name[1:])
-                    v_feats[v_idx-1] = st.session_state[f"val_{v_name}_cloud"]
-                res = process_prediction(st.session_state.amt_cloud, st.session_state.time_cloud, v_feats, source="HỆ THỐNG (Manual)")
-                if res:
-                    if "BLOCK" in res['decision']:
-                        st.error(f"KẾT QUẢ: GIAN LẬN ({res['prob']})")
-                    else:
-                        st.success(f"KẾT QUẢ: HỢP LỆ ({res['prob']})")
+                with st.spinner("Đang phân tích..."):
+                    v_feats = [0.0]*28
+                    for v_name in selected_vs:
+                        v_idx = int(v_name[1:])
+                        v_feats[v_idx-1] = st.session_state[f"val_{v_name}_cloud"]
+                    res = process_prediction(st.session_state.amt_cloud, st.session_state.time_cloud, v_feats, source="HỆ THỐNG (Manual)")
+                    if res:
+                        if "BLOCK" in res['decision']:
+                            st.error(f"Kết quả: GIAN LẬN ({res['prob']} gian lận)")
+                        else:
+                            st.success(f"Kết quả: HỢP LỆ ({res['prob']} gian lận)")
 
         with tab2:
             up = st.file_uploader("Tải lên file giao dịch (.csv)", type="csv", key="file_cloud", label_visibility="collapsed")
             if up:
                 df = load_csv_data(up)
                 st.dataframe(df.head(), use_container_width=True)
-                if st.button("Quét toàn bộ tập tin", type="primary"):
-                    st.success("Tính năng quét tập tin đang được đồng bộ...")
+                if st.button("Quét toàn bộ tập tin", type="primary", key="scan_cloud"):
+                    with st.spinner("Đang phân tích hàng loạt..."):
+                        # Nhận diện cột
+                        amt_col = 'Amount' if 'Amount' in df.columns else 'scaled_amount'
+                        time_col = 'Time' if 'Time' in df.columns else 'scaled_time'
+                        
+                        batch_size = 100_000
+                        fraud_total = 0
+                        total_rows = len(df)
+                        
+                        for start_idx in range(0, total_rows, batch_size):
+                            end_idx = min(start_idx + batch_size, total_rows)
+                            batch_df = df.iloc[start_idx:end_idx]
+                            
+                            fraud_total += process_bulk_cloud(batch_df, amt_col, time_col)
+                        
+                        st.success(f"Hoàn tất! Đã xử lý {total_rows:,} giao dịch. Phát hiện {fraud_total} vụ gian lận.")
 
     analysis_center_cloud()
