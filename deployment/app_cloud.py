@@ -240,6 +240,33 @@ def load_model():
 model = load_model()
 
 @st.cache_resource
+def load_scaler():
+    scaler_path = 'modeling/scaler.pkl'
+    scaler_url = "https://github.com/kttt294/SafeGuard-Fraud-Detection-System/releases/download/v1.0.0/scaler.pkl"
+    
+    try:
+        if not os.path.exists(scaler_path):
+            os.makedirs('modeling', exist_ok=True)
+            with st.spinner("Đang tải Scaler từ GitHub..."):
+                resp = requests.get(scaler_url, stream=True)
+                if resp.status_code == 200:
+                    with open(scaler_path, 'wb') as f:
+                        for chunk in resp.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                else:
+                    st.error(f"Lỗi tải scaler từ GitHub: {resp.status_code}")
+                    return None
+                    
+        if os.path.exists(scaler_path):
+            with open(scaler_path, 'rb') as f:
+                return pickle.load(f)
+    except Exception as e:
+        st.error(f"Lỗi khởi tạo scaler: {e}")
+    return None
+
+scaler = load_scaler()
+
+@st.cache_resource
 def get_db_pool():
     from psycopg2 import pool
     try:
@@ -331,7 +358,16 @@ def process_prediction(amount, time_val, v_features, source="HỆ THỐNG (Manua
     if model:
         conn = None
         try:
-            input_data = [amount/100, time_val/1000] + v_features
+            # Scale Amount và Time bằng đúng scaler đã fit trên train data
+            if scaler:
+                scaled_amt = float(scaler.transform([[amount]])[0][0])
+                scaled_time = float(scaler.transform([[time_val]])[0][0])
+            else:
+                # Fallback nếu không có scaler (kém chính xác hơn)
+                scaled_amt = amount / 100
+                scaled_time = time_val / 1000
+            
+            input_data = [scaled_amt, scaled_time] + v_features
             features_df = pd.DataFrame([input_data], columns=FEATURE_COLUMNS)
             prob = model.predict_proba(features_df)[0][1]
             decision = "BLOCK" if prob > 0.5 else "APPROVE"
@@ -352,9 +388,14 @@ def process_prediction(amount, time_val, v_features, source="HỆ THỐNG (Manua
 def process_bulk_cloud(df, amt_col, time_col, source="HỆ THỐNG (Bulk)"):
     if not model: return 0
     
-    # 1. Chuẩn bị mảng dữ liệu (Vectorized)
-    # Scale Amount và Time giống logic model
-    X = df[[amt_col, time_col]].values / [100.0, 1000.0]
+    # Scale Amount và Time bằng đúng scaler
+    if scaler and amt_col in ('Amount', 'Time'):  # Chỉ scale khi là cột raw
+        amt_scaled = scaler.transform(df[[amt_col]].values).flatten()
+        time_scaled = scaler.transform(df[[time_col]].values).flatten()
+        X = np.column_stack([amt_scaled, time_scaled])
+    else:
+        # Nếu là cột scaled_amount/scaled_time thì dùng thẳng, không scale thêm
+        X = df[[amt_col, time_col]].values
     V = df[[f'V{i}' for i in range(1, 29)]].values
     input_array = np.hstack([X, V])
     
