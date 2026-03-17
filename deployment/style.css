@@ -1,0 +1,239 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* THIẾT KẾ TỐI GIẢN: Nền trắng toàn phần */
+.stApp, [data-testid="stAppViewContainer"], .main, .block-container {
+    background-color: white !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.block-container {
+    padding: 60px 40px 20px 40px !important;
+    max-width: 1400px !important; /* Mở rộng không gian hơn một chút */
+    margin: 0 auto !important;
+}
+
+/* Ẩn Header/Toolbar mặc định */
+[data-testid="stHeader"], [data-testid="stToolbar"] {
+    display: none !important;
+}
+
+/* Fixed Header */
+.custom-header {
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    height: 60px;
+    background-color: #38bdf8;
+    display: flex; align-items: center;
+    padding: 0 40px; z-index: 10000;
+    color: white; justify-content: space-between;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.header-branding { font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; }
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.header-icons {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.icon-wrapper {
+    position: relative;
+    cursor: pointer;
+}
+
+.icon-dot {
+    position: absolute;
+    top: -2px; right: -2px;
+    width: 8px; height: 8px;
+    background-color: #0ea5e9;
+    border: 1.5px solid #38bdf8;
+    border-radius: 50%;
+}
+
+.user-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.user-info {
+    line-height: 1.2;
+    font-size: 0.9rem;
+}
+
+.user-name {
+    font-weight: 700;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+/* ĐƯỜNG KẺ PHÂN CÁCH GIỮA 2 CỘT */
+.vertical-divider {
+    border-left: 1px solid #e2e8f0;
+    height: 400px; /* Độ cao tối thiểu cho vạch kẻ */
+    margin: 20px auto;
+    width: 0;
+}
+
+[data-testid="stHorizontalBlock"] > div:last-child {
+    padding-left: 30px !important;
+}
+
+/* Xóa bỏ định dạng Card cũ */
+[data-testid="stHorizontalBlock"] > div > div:first-child {
+    background-color: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: auto !important;
+    min-height: auto !important;
+}
+
+/* Tiêu đề chung cho các Section */
+.section-header {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px !important;
+    letter-spacing: -0.01em;
+}
+
+.live-monitor-title {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px !important;
+}
+
+.live-dot {
+    height: 8px; width: 8px; background-color: #ef4444;
+    border-radius: 50%; display: inline-block; margin-right: 10px;
+    animation: blink 1.5s infinite;
+}
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+/* Thẻ Cảnh báo Mini (Tối giản hơn) */
+.alert-card {
+    padding: 12px; background-color: #f8fafc;
+    border-radius: 8px; margin-bottom: 15px;
+    border: 1px solid #f1f5f9;
+}
+.alert-source { font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+.alert-msg { font-size: 0.8rem; font-weight: 600; color: #0f172a; margin-top: 2px; }
+.alert-meta { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+
+/* Ô nhập liệu số (Nhỏ gọn) */
+[data-testid="stNumberInput"] {
+    max-width: 160px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Nút bấm (Flat Design & Căn giữa) */
+.stButton {
+    display: flex;
+    justify-content: center;
+}
+
+.stButton > button[data-testid="stBaseButton-primary"] {
+    min-width: 250px !important; 
+    background-color: #38bdf8 !important;
+    color: white !important; border-radius: 6px !important;
+    border: none !important; font-weight: 600 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Hàng tiêu đề cho mỗi đặc trưng (Tên + Nút Xóa) */
+.v-feature-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 28px;
+    margin-bottom: 0;
+}
+
+.feature-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #1e293b;
+    line-height: 28px;
+}
+
+/* Container nút xóa: Kéo lên ngang hàng với tên đặc trưng */
+.stButton:has(> button[data-testid="stBaseButton-secondary"]) {
+    margin-top: -28px !important;
+    margin-bottom: 0 !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    max-width: 160px !important;
+}
+
+/* Style cho nút xóa đặc trưng */
+.stButton > button[data-testid="stBaseButton-secondary"] {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #94a3b8 !important;
+    font-size: 1rem !important;
+    padding: 0 !important;
+    min-width: unset !important;
+    width: 24px !important;
+    height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.stButton > button[data-testid="stBaseButton-secondary"]:hover {
+    color: #ef4444 !important;
+    transform: scale(1.1) !important;
+}
+
+.stButton > button[data-testid="stBaseButton-primary"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    background-color: #0ea5e9 !important;
+}
+
+.stButton > button[data-testid="stBaseButton-primary"]:active {
+    transform: scale(0.96) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* Ẩn các nhãn (tags) trong Multi-select để làm gọn thanh tìm kiếm theo ý người dùng */
+span[data-baseweb="tag"] {
+    display: none !important;
+}
+
+/* Ẩn triệt để các nút +/- trong toàn bộ Dashboard */
+button[step="1"], button[step="-1"], 
+div[data-testid="stNumberInput"] button {
+    display: none !important;
+}
+
+/* Ẩn các nhãn (tags) trong Multi-select để làm gọn thanh tìm kiếm theo ý người dùng */
+span[data-baseweb="tag"] {
+    display: none !important;
+}
+
+/* Ẩn triệt để các nút +/- trong toàn bộ Dashboard */
+button[step="1"], button[step="-1"], 
+div[data-testid="stNumberInput"] button {
+    display: none !important;
+}
