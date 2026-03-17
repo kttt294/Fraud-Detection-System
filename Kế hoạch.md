@@ -31,6 +31,10 @@ Dự án này xây dựng một hệ thống phát hiện giao dịch gian lận
 3. **Scaling:** Áp dụng `RobustScaler` vì dữ liệu tài chính thường chứa nhiều Outliers. Nếu dùng `StandardScaler`, kết quả sẽ rất tệ. Ta cũng **không nên xóa** những Outliers này, vì trong ngành ngân hàng, giao dịch bất thường (Outlier) chính là dấu hiệu tiềm năng của gian lận. RonustScaler dùng để scale các feature nhưng ít bị ảnh hưởng bởi outliers, thường dựa trên median và IQR = Q3 - Q1 thay vì mean và std như standardScaler
 
    - x(scaled) = (**x**−median) / **I**QR
+   - Tại sao chúng ta NÊN scale cột `Time`?
+     - **Sự áp đảo về con số** : Cột `Time` lên tới hơn  **170.000** , trong khi các cột `V1-V28` chỉ loanh quanh số lẻ (ví dụ 0.5, -1.2). Nếu bạn dùng các model nhạy cảm với thang đo như  **Logistic Regression, SVM, hay Neural Networks** , model sẽ lầm tưởng rằng `Time` quan trọng gấp... 100.000 lần các biến khác chỉ vì con số của nó lớn hơn. Điều này làm model bị "mù tạng" (biased).
+     - **Đồng bộ hóa (Feature Engineering)** : Bằng cách dùng `RobustScaler`, chúng ta đưa `Time` về cùng một "mặt bằng" với các biến PCA (V1-V28). Model sẽ học được là: *"À, lúc này là sớm hay muộn trong ngày"* mà không bị choáng ngợp bởi con số hàng chục ngàn.
+     - **Giữ nguyên thông tin** : Scale không làm mất đi thứ tự thời gian, nó chỉ "co" lại cho vừa vặn.
 4. **Imbalanced Data:** Sử dụng `SMOTE` (Synthetic Minority Over-sampling Technique) để cân bằng dữ liệu. Không *SMOTE trong tiền xử lý mà đưa vào Pipeline để tránh Data Leakage trong quá trình Cross-Validation*
 
 ### 2. Xây dựng & Sàng lọc Mô hình (Modeling & Spot-checking)
@@ -38,7 +42,7 @@ Dự án này xây dựng một hệ thống phát hiện giao dịch gian lận
 - có thể load data đã được chia với lệnh:
 - import pickle
   with open('../data/processed/data_splits.pkl', 'rb') as f:
-      data = pickle.load(f)
+  data = pickle.load(f)
   X_train, X_test, y_train, y_test = data['X_train'], data['X_test'], data['y_train'], data['y_test']
 - **Baseline:** Logistic Regression.
 - **Advanced Models:** Random Forest, XGBoost, CatBoost.
@@ -80,9 +84,36 @@ Nhóm xây dựng một **Hệ thống AI tích hợp (Embedded AI System)** chu
 
 => **Giải pháp Công nghệ Tài chính (FinTech Solution) -> Hệ thống hỗ trợ chuyển viên phòng rủi ro**
 
- *"V1 đến V28 là gì?"* 
+ *"V1 đến V28 là gì?"*
 
 > *"Trong thực tiễn ngân hàng, đây là các **đặc trưng hành vi và thiết bị** đã được mã hóa. Ví dụ V1 có thể là chỉ số về vị trí địa lý, V2 là thông tin về loại thiết bị. Ngân hàng không cung cấp tên gốc của các cột này cho nhóm phát triển để bảo vệ quyền riêng tư của khách hàng, nhưng mô hình vẫn có thể tìm ra các mẫu hình gian lận từ những con số đã mã hóa này*
+
+### Bối cảnh Dự án: Bài toán từ Doanh nghiệp
+
+Dự án này được xây dựng dựa trên một yêu cầu thực tế từ một  **Tổ chức Tài chính quốc tế** . Bài toán đặt ra là: Doanh nghiệp đang đối mặt với nguy cơ gian lận giao dịch ngày càng tinh vi, gây thất thoát hàng triệu USD mỗi năm. Họ cần một giải pháp AI tự động hóa việc sàng lọc giao dịch nhưng phải đảm bảo các điều kiện sau:
+
+#### - Thách thức về Bảo mật Dữ liệu (Dữ liệu PCA)
+
+Do tính chất bảo mật nghiêm ngặt của ngành ngân hàng, doanh nghiệp không cung cấp thông tin thô của khách hàng (như tên, địa chỉ, số thẻ). Thay vào đó, dữ liệu được cung cấp dưới dạng các đặc trưng đã được **PCA (Principal Component Analysis)** — biến đổi thành 28 cột ẩn danh từ  **V1 đến V28** .
+
+* **Nhiệm vụ của chúng ta:** Xây dựng một mô hình học máy đủ mạnh để nhận diện quy luật gian lận ngay cả trên những không gian vector ẩn danh này.
+
+#### - Thách thức về Dữ liệu mất cân bằng (Imbalance Data)
+
+Trong dữ liệu thực tế mà khách hàng cung cấp, các giao dịch gian lận chỉ chiếm tỉ lệ cực nhỏ ( **~0.17%** ). Nếu xử lý không khéo, mô hình sẽ mặc định coi "tất cả là hợp lệ" và bỏ lọt những kẻ tấn công thực sự.
+
+* **Giải pháp của chúng ta:** Áp dụng kỹ thuật tiền xử lý chuyên sâu, bao gồm **Robust Scaling** (chuẩn hóa chống outliers) và chiến lược cân bằng dữ liệu **SMOTE** để huấn luyện AI nhạy bén hơn với các dấu hiệu nhỏ nhất.
+
+#### - Yêu cầu về Triển khai Thực tế (Deployment)
+
+Doanh nghiệp không chỉ cần một báo cáo hay một đoạn code chạy trên máy tính. Họ cần một  **Hệ thống có khả năng tương tác** :
+
+* Một **API chuyên dụng** để các ứng dụng Mobile/Web của ngân hàng có thể gọi xác thực ngay lập tức.
+* Một **Dashboard Dashboard trực quan** để đội ngũ kỹ thuật có thể theo dõi "sức khỏe" của dòng chảy giao dịch trong thời gian thực.
+* Một **Hệ thống hỗ trợ chuyên viên (Specialist Assistant)** giúp xử lý các tệp dữ liệu lớn hàng chục nghìn dòng một cách tập trung.
+
+Mục tiêu: Hệ thống **SafeGuard** được thiết kế và phát triển chính là câu trả lời cho bài toán này. Nó chuyển đổi những bộ dữ liệu số khô khan thành hành động bảo mật cụ thể, giúp doanh nghiệp chủ động ngăn chặn gian lận thay vì chỉ thụ động khắc phục hậu quả.
+
 
 ## Verification Plan
 

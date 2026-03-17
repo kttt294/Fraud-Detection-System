@@ -61,13 +61,59 @@ with open(os.path.join(OUTPUT_DIR, 'eda_report.txt'), 'w', encoding='utf-8') as 
     f.write(f"Top Outlier Columns (IQR method):\n{outlier_counts.sort_values(ascending=False).head(10).to_string()}\n")
 print(f"\n[INFO] Đã lưu báo cáo EDA tại '{OUTPUT_DIR}/eda_report.txt'")
 
-# 3. Visualization nâng cao: Ma trận Tương quan (Correlation Heatmap)
-print("\n--- Generating Correlation Heatmap ---")
+# --- Section: Exploratory Data Analysis (EDA) ---
+print("\n--- Generating EDA Visualizations ---")
+
+# 1. Class Distribution (Mất cân bằng)
+plt.figure(figsize=(8,6))
+ax = sns.countplot(x='Class', data=df, hue='Class', palette='tab10', legend=False)
+plt.title('Fraud vs Normal Transactions')
+plt.xticks([0, 1], ['Normal', 'Fraud'])
+for container in ax.containers:
+    ax.bar_label(container, padding=3, fontsize=10)
+plt.savefig(os.path.join(OUTPUT_DIR, '01_class_distribution.png'))
+plt.close()
+
+# 2. Time Distribution (Chu kỳ 2 ngày)
+plt.figure(figsize=(12,4))
+sns.histplot(df['Time'], bins=48, kde=False, color='royalblue', edgecolor='none')
+plt.title('Transaction Time Distribution (2 Days)')
+plt.xlabel('Time (Seconds)')
+plt.savefig(os.path.join(OUTPUT_DIR, '02_time_distribution.png'))
+plt.close()
+
+# 3. Amount vs Class (Scatter Plot)
+plt.figure(figsize=(10,6))
+plt.scatter(df['Amount'], df['Class'], alpha=0.5, c=df['Class'], cmap='coolwarm')
+plt.title('Fraud vs Transaction Amount (Scatter)')
+plt.xlabel('Amount')
+plt.ylabel('Class (0=Normal, 1=Fraud)')
+plt.savefig(os.path.join(OUTPUT_DIR, '03_amount_scatter.png'))
+plt.close()
+
+# 4. Amount Boxplot (Outliers)
+plt.figure(figsize=(8,6))
+sns.boxplot(x='Class', y='Amount', data=df, hue='Class', palette='muted', legend=False)
+plt.title('Amount Outliers by Class')
+plt.savefig(os.path.join(OUTPUT_DIR, '04_amount_boxplot.png'))
+plt.close()
+
+# 5. Amount Histograms (Linear & Log)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+sns.histplot(df['Amount'], kde=True, color='steelblue', ax=ax1)
+ax1.set_title('Amount Distribution (Linear Scale)')
+sns.histplot(df['Amount'] + 0.001, kde=True, color='mediumseagreen', log_scale=True, ax=ax2)
+ax2.set_title('Amount Distribution (Log Scale)')
+plt.tight_layout()
+plt.savefig(os.path.join(OUTPUT_DIR, '05_amount_distribution.png'))
+plt.close()
+
+# 6. Correlation Heatmap
 plt.figure(figsize=(12, 10))
 corr = df.corr()
 sns.heatmap(corr, cmap='coolwarm_r', annot_kws={'size':20})
-plt.title('Ma trận Tương quan (Gợi ý đặc trưng quan trọng)', fontsize=14)
-plt.savefig(os.path.join(OUTPUT_DIR, 'correlation_heatmap.png'))
+plt.title('Feature Correlation Matrix', fontsize=14)
+plt.savefig(os.path.join(OUTPUT_DIR, '06_correlation_heatmap.png'))
 plt.close()
 
 # In ra các cột có tương quan cao nhất với Class để "bàn giao" cho nhóm Modeling
@@ -75,89 +121,42 @@ top_corr_features = corr['Class'].abs().sort_values(ascending=False).head(10)
 print("\n--- Top 10 đặc trưng tương quan mạnh nhất với Class ---")
 print(top_corr_features)
 
-# Visualization 1: Phân phối của Class (Mất cân bằng)
-plt.figure(figsize=(8, 6))
-ax = sns.countplot(x='Class', data=df, hue='Class', palette='viridis', legend=False)
-plt.title('Phân phối Giao dịch: Hợp lệ (0) vs Gian lận (1) (Log Scale)')
+# 3 & 4. Splitting then Scaling (Best Practice to tránh Data Leakage)
+print("\n--- Splitting then Scaling (Best Practice) ---")
+X = df.drop('Class', axis=1)
+y = df['Class']
 
-# Thêm số lượng chính xác trên đầu mỗi cột
-for container in ax.containers:
-    ax.bar_label(container, padding=3, fontsize=11, fontweight='bold')
+# Tách tập Train/Test TRƯỚC khi scale để đảm bảo không rò rỉ thông tin từ tập Test
+X_train_raw, X_test_raw, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# Sử dụng thang đo Log để có thể nhìn thấy cột của lớp 1
-plt.yscale('log') 
-plt.ylabel('Số lượng (Log Scale)')
-
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, 'distribution_class.png'))
-plt.close()
-print(f"\n[INFO] Đã lưu biểu đồ phân phối Class tại '{OUTPUT_DIR}/distribution_class.png'")
-
-# Visualization 2a: Phân phối của Amount (Dòng tiền - Thang đo Tuyến tính)
-plt.figure(figsize=(10, 6))
-sns.histplot(df['Amount'], kde=True, color='steelblue')
-plt.title('Phân phối Số tiền Giao dịch (Linear Scale)')
-plt.xlabel('Số tiền (Euro)', fontsize=12)
-plt.ylabel('Số lượng giao dịch', fontsize=12)
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, 'distribution_amount.png'))
-plt.close()
-print(f"[INFO] Đã lưu biểu đồ phân phối Amount (Linear) tại '{OUTPUT_DIR}/distribution_amount.png'")
-
-# Visualization 2b: Phân phối của Amount (Dòng tiền - Thang đo Logarithm)
-plt.figure(figsize=(10, 6))
-sns.histplot(df['Amount'] + 0.001, kde=True, color='mediumseagreen', log_scale=True)
-plt.title('Phân phối của Số tiền Giao dịch (Log Scale X)')
-plt.xlabel('Số tiền (Log Scale)')
-plt.ylabel('Số lượng')
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, 'distribution_amount_log.png'))
-plt.close()
-print(f"[INFO] Đã lưu biểu đồ phân phối Amount (Log) tại '{OUTPUT_DIR}/distribution_amount_log.png'")
-
-# Visualization 3: Boxplot Amount theo Class
-plt.figure(figsize=(8, 6))
-sns.boxplot(x='Class', y='Amount', data=df, hue='Class', palette='Set2', legend=False)
-plt.title('So sánh Số tiền Giao dịch theo Loại (0 vs 1)', fontsize=14)
-plt.xlabel('Loại giao dịch (0: Hợp lệ, 1: Gian lận)', fontsize=12)
-plt.ylabel('Số tiền (Euro)', fontsize=12)
-plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, 'boxplot_amount_by_class.png'))
-plt.close()
-print(f"[INFO] Đã lưu boxplot Amount theo Class tại '{OUTPUT_DIR}/boxplot_amount_by_class.png'")
-
-# 3. Preprocessing: Scaling (Time & Amount)
-# Sử dụng RobustScaler vì dữ liệu tài chính thường có Outliers lớn
-print("\n--- Scaling Time and Amount ---")
+# Khởi tạo Scaler
 rob_scaler = RobustScaler()
 
-# Fit và transform cả 2 cột cùng lúc để tránh ghi đè thông số
-df[['scaled_amount', 'scaled_time']] = rob_scaler.fit_transform(df[['Amount', 'Time']])
+# CHỈ FIT trên tập Train dữ liệu thô
+train_scaled = rob_scaler.fit_transform(X_train_raw[['Amount', 'Time']])
+# Chỉ transform trên tập Test dựa trên thông số Median/IQR đã học từ Train
+test_scaled = rob_scaler.transform(X_test_raw[['Amount', 'Time']])
 
-# Lưu scaler đã học để dùng lại trong deployment
+# Lưu scaler đã học để dùng lại trong deployment (Best Practice: Serving)
 MODELING_DIR = os.path.join(BASE_DIR, 'modeling')
 os.makedirs(MODELING_DIR, exist_ok=True)
 with open(os.path.join(MODELING_DIR, 'scaler.pkl'), 'wb') as f:
     pickle.dump(rob_scaler, f)
 print(f"[INFO] Đã lưu RobustScaler tại '{MODELING_DIR}/scaler.pkl'")
 
-# Loại bỏ cột gốc sau khi đã scale
-df.drop(['Time','Amount'], axis=1, inplace=True)
+# Hàm phụ trợ để hoàn thiện DataFrame sau scale
+def finalize_df(df_raw, scaled_values):
+    df_new = df_raw.copy()
+    df_new['scaled_amount'] = scaled_values[:, 0]
+    df_new['scaled_time'] = scaled_values[:, 1]
+    df_new.drop(['Amount', 'Time'], axis=1, inplace=True)
+    # Đưa 2 cột đã scale lên đầu tiên cho đúng cấu trúc model yêu cầu
+    cols = ['scaled_amount', 'scaled_time'] + [c for c in df_new.columns if c not in ['scaled_amount', 'scaled_time']]
+    return df_new[cols]
 
-# Đưa các cột đã scale lên đầu để dễ quan sát
-scaled_amount = df['scaled_amount']
-scaled_time = df['scaled_time']
-df.drop(['scaled_amount', 'scaled_time'], axis=1, inplace=True)
-df.insert(0, 'scaled_amount', scaled_amount)
-df.insert(1, 'scaled_time', scaled_time)
-
-# 4. Tách tập Train và Test (Lưu ý: Không chạm vào Test cho đến bước cuối)
-print("\n--- Splitting Train and Test sets ---")
-X = df.drop('Class', axis=1)
-y = df['Class']
-
-# Stratify=y để đảm bảo tỷ lệ Class 0/1 đồng đều ở cả 2 tập
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+# Tạo tập X_train và X_test chính thức
+X_train = finalize_df(X_train_raw, train_scaled)
+X_test = finalize_df(X_test_raw, test_scaled)
 
 print(f"Shape of X_train: {X_train.shape}")
 print(f"Shape of X_test: {X_test.shape}")
