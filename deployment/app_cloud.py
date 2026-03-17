@@ -473,26 +473,11 @@ with col_right:
             )
             
             if selected_vs:
-                # Xử lý theo từng nhóm 4 đặc trưng để tránh nested columns
-                for row_start in range(0, len(selected_vs), 4):
-                    row_vs = selected_vs[row_start:row_start+4]
-                    n = len(row_vs)
-                    
-                    # Hàng 1: Tên và nút Xóa xen kẽ (không lồng columns)
-                    hdr_cols = st.columns([3, 1] * n)
-                    for j, v_name in enumerate(row_vs):
-                        with hdr_cols[j*2]:
-                            st.markdown(f'<p style="margin:0;padding:4px 0 0 0;font-weight:600;font-size:0.9rem;color:#1e293b">{v_name}</p>', unsafe_allow_html=True)
-                        with hdr_cols[j*2+1]:
-                            if st.button("✕", key=f"del_{v_name}_cloud", type="secondary"):
-                                st.session_state.v_multi_cloud.remove(v_name)
-                                st.rerun()
-                    
-                    # Hàng 2: Input fields
-                    inp_cols = st.columns([4] * n + [0] * (4 - n)) if n < 4 else st.columns(4)
-                    for j, v_name in enumerate(row_vs):
-                        with inp_cols[j]:
-                            st.number_input(v_name, value=0.0, step=None, label_visibility="collapsed", key=f"val_{v_name}_cloud")
+                v_cols = st.columns(4)
+                for i, v_name in enumerate(selected_vs):
+                    with v_cols[i % 4]:
+                        st.markdown(f'<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">{v_name}</p>', unsafe_allow_html=True)
+                        st.number_input(v_name, value=0.0, step=None, label_visibility="collapsed", key=f"val_{v_name}_cloud")
 
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("Bắt đầu phân tích", type="primary", key="btn_cloud"):
