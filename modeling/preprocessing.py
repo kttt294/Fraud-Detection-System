@@ -134,6 +134,13 @@ rob_scaler = RobustScaler()
 df['scaled_amount'] = rob_scaler.fit_transform(df['Amount'].values.reshape(-1,1))
 df['scaled_time'] = rob_scaler.fit_transform(df['Time'].values.reshape(-1,1))
 
+# Lưu scaler đã học để dùng lại trong deployment
+MODELING_DIR = os.path.join(BASE_DIR, 'modeling')
+os.makedirs(MODELING_DIR, exist_ok=True)
+with open(os.path.join(MODELING_DIR, 'scaler.pkl'), 'wb') as f:
+    pickle.dump(rob_scaler, f)
+print(f"[INFO] Đã lưu RobustScaler tại '{MODELING_DIR}/scaler.pkl'")
+
 # Loại bỏ cột gốc sau khi đã scale
 df.drop(['Time','Amount'], axis=1, inplace=True)
 
