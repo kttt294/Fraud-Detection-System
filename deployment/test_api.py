@@ -4,13 +4,33 @@ import json
 def test_api():
     url = "http://localhost:8000/verify"
     
-    # Giả lập một giao dịch (Sử dụng các giá trị V ngẫu nhiên)
+    # Giả lập một giao dịch bị BLOCK
     payload = {
-        "amount": 2500.0,
-        "time_val": 45000.0,
-        "v_features": [0.1] * 28  # Giả lập 28 đặc trưng V
+        "amount": 999.0,
+        "time_val": 1.0, 
+        "v_features": [
+            0.0, 0.0, 0.0, 10.0,
+            0.0, 0.0, 0.0, 0.0, 0.0,
+            -15.0,
+            10.0,
+            -15.0,
+            0.0,
+            -15.0,
+            0.0, 0.0,
+            -15.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
     }
-    
+
+    # Giả lập một giao dịch được APPROVE
+    '''
+    payload = {
+        "amount": 1.0,
+        "time_val": 45000.0,
+        "v_features": [-50] * 28
+    }
+    '''
+
     print("--- Đang gửi yêu cầu xác thực giao dịch đến API ---")
     try:
         response = requests.post(url, json=payload)

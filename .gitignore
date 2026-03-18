@@ -221,3 +221,4 @@ data/outputs/logs.json
 .env
 .venv
 *.ipynb
+tmp/*

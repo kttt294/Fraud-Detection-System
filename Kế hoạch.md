@@ -36,6 +36,16 @@ Dự án này xây dựng một hệ thống phát hiện giao dịch gian lận
      - **Đồng bộ hóa (Feature Engineering)** : Bằng cách dùng `RobustScaler`, chúng ta đưa `Time` về cùng một "mặt bằng" với các biến PCA (V1-V28). Model sẽ học được là: *"À, lúc này là sớm hay muộn trong ngày"* mà không bị choáng ngợp bởi con số hàng chục ngàn.
      - **Giữ nguyên thông tin** : Scale không làm mất đi thứ tự thời gian, nó chỉ "co" lại cho vừa vặn.
 4. **Imbalanced Data:** Sử dụng `SMOTE` (Synthetic Minority Over-sampling Technique) để cân bằng dữ liệu. Không *SMOTE trong tiền xử lý mà đưa vào Pipeline để tránh Data Leakage trong quá trình Cross-Validation*
+5. *Ma trận tương quan giúp xác định được 'mối liên hệ nhân quả' tiềm ẩn giữa các đặc trưng PCA bí ẩn và hành vi gian lận. Nhờ nó, biết được những biến nào là 'Input chất lượng' nhất cho mô hình, đồng thời kiểm chứng lại tính hiệu quả của bước PCA khi các biến đầu vào hoàn toàn độc lập với nhau, giúp mô hình huấn luyện nhanh và chính xác hơn.*
+6. **Lợi thế của Tập dữ liệu đã qua xử lý PCA và Tính Thực tế trong Doanh nghiệp**
+
+   Việc lựa chọn tập dữ liệu có các cột từ **V1 đến V28** (đã qua biến đổi PCA) thay vì tìm kiếm các tập dữ liệu thô (raw data) mang lại ba ưu thế chiến lược, đồng thời mô phỏng chính xác môi trường làm việc tại các doanh nghiệp tài chính hiện nay:
+
+   1. **Tính bảo mật và Tuân thủ (Data Privacy & Compliance):** Trong thực tế, các ngân hàng và tổ chức tài chính không bao giờ cung cấp dữ liệu thô chứa thông tin nhạy cảm như *Tên khách hàng, Số tài khoản, hay Địa chỉ giao dịch* cho đội ngũ phân tích dữ liệu bên thứ ba hoặc thậm chí là nhân viên nội bộ nếu không cần thiết. Việc sử dụng các biến số đã được PCA hóa chính là cách các doanh nghiệp bảo vệ quyền riêng tư của khách hàng mà vẫn cho phép khai thác giá trị từ dữ liệu. Lựa chọn tập dữ liệu này giúp chúng ta làm quen với quy trình xử lý dữ liệu thực tế: **Làm việc với các đặc trưng cốt lõi thay vì các nhãn tên trực quan.**
+   2. **Tối ưu hóa Hiệu năng và Khử nhiễu (Efficiency & De-noising):** Dữ liệu thô thường chứa rất nhiều biến số có tính tương quan chéo cao hoặc mang thông tin thừa (nhiễu). PCA đã thực hiện thay chúng ta bước "tinh lọc" ban đầu: nén các thông tin quan trọng nhất vào 28 thành phần chính, giúp loại bỏ các biến lặp lại và giảm đáng kể chi phí tính toán. Điều này giúp mô hình tập trung vào việc học các **mẫu hình hành vi gian lận (Fraud Patterns)** thực sự thay vì bị xao nhãng bởi các thông tin định danh không liên quan.
+   3. **Mô phỏng Bài toán Doanh nghiệp Thực tế:** Tại một trung tâm quản lý rủi ro thẻ tín dụng, thách thức thực sự không nằm ở việc đọc tên cột dữ liệu là gì, mà là **khả năng phát hiện các "dấu vân tay" bất thường** ẩn sâu trong các chỉ số kỹ thuật. Việc sử dụng tập dữ liệu này buộc chúng ta phải dựa hoàn toàn vào toán học, thống kê và cấu trúc phân phối của dữ liệu để đưa ra dự đoán – đây chính là kỹ năng quan trọng nhất của một chuyên gia Data Science khi đối mặt với các hệ thống dữ liệu khổng lồ và phức tạp trong doanh nghiệp.
+
+   **Kết luận:** Tập dữ liệu này không chỉ là một bài tập học thuật, mà là một ví dụ điển hình về cách thức **Quản trị rủi ro hiện đại** được vận hành: Bảo mật tuyệt đối, nhưng vẫn đảm bảo độ chính xác tối đa trong nhận diện gian lận.
 
 ### 2. Xây dựng & Sàng lọc Mô hình (Modeling & Spot-checking)
 
@@ -88,6 +98,14 @@ Nhóm xây dựng một **Hệ thống AI tích hợp (Embedded AI System)** chu
 
 > *"Trong thực tiễn ngân hàng, đây là các **đặc trưng hành vi và thiết bị** đã được mã hóa. Ví dụ V1 có thể là chỉ số về vị trí địa lý, V2 là thông tin về loại thiết bị. Ngân hàng không cung cấp tên gốc của các cột này cho nhóm phát triển để bảo vệ quyền riêng tư của khách hàng, nhưng mô hình vẫn có thể tìm ra các mẫu hình gian lận từ những con số đã mã hóa này*
 
+
+
+VỀ NHƯỢC ĐIỂM CỦA CÁC CỘT DỮ LIỆU Vi ĐÃ QUA PCA:
+
+1. **Chấp nhận** : Đây là đặc thù của dữ liệu tài chính (đã được mã hóa qua PCA) nên không thể áp dụng chéo trực tiếp.
+2. **Lập luận** : "Train lại" thực chất là một lợi thế vì nó tạo ra **Customized Model** sát với hành vi khách hàng của từng doanh nghiệp nhất, giúp giảm tối đa thiệt hại tài chính do báo động giả.
+3. **Tầm nhìn** : Sản phẩm SafeGuard được thiết kế dưới dạng một **Pipeline tự động** (như Notebook em đã xây dựng), giúp việc "tái huấn luyện" cho khách hàng mới diễn ra cực kỳ nhanh chóng và chuẩn xác.
+
 ### Bối cảnh Dự án: Bài toán từ Doanh nghiệp
 
 Dự án này được xây dựng dựa trên một yêu cầu thực tế từ một  **Tổ chức Tài chính quốc tế** . Bài toán đặt ra là: Doanh nghiệp đang đối mặt với nguy cơ gian lận giao dịch ngày càng tinh vi, gây thất thoát hàng triệu USD mỗi năm. Họ cần một giải pháp AI tự động hóa việc sàng lọc giao dịch nhưng phải đảm bảo các điều kiện sau:
@@ -113,6 +131,7 @@ Doanh nghiệp không chỉ cần một báo cáo hay một đoạn code chạy 
 * Một **Hệ thống hỗ trợ chuyên viên (Specialist Assistant)** giúp xử lý các tệp dữ liệu lớn hàng chục nghìn dòng một cách tập trung.
 
 Mục tiêu: Hệ thống **SafeGuard** được thiết kế và phát triển chính là câu trả lời cho bài toán này. Nó chuyển đổi những bộ dữ liệu số khô khan thành hành động bảo mật cụ thể, giúp doanh nghiệp chủ động ngăn chặn gian lận thay vì chỉ thụ động khắc phục hậu quả.
+
 
 ## Verification Plan
 
