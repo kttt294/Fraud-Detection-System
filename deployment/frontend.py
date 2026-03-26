@@ -239,7 +239,7 @@ with col_right:
                     
                     # Hiển thị kết quả ngoài spinner để đảm bảo UX
                     if res_all.get("decision") == "BLOCK":
-                        st.error(f"⚠️ CẢNH BÁO: GIAN LẬN ({res_all.get('probability')} xác suất)")
+                        st.error(f"CẢNH BÁO: GIAN LẬN ({res_all.get('probability')} xác suất)")
                     else:
                         st.success(f"✅ HỢP LỆ ({res_all.get('probability')} xác suất gian lận)")
                 except requests.exceptions.Timeout:
@@ -296,7 +296,7 @@ with col_right:
                             st.session_state.fraud_df_front = pd.DataFrame(all_detected_frauds) if all_detected_frauds else pd.DataFrame()
                             st.success(f"Hoàn tất! Đã xử lý {total:,} giao dịch. Phát hiện {fraud_count} vụ gian lận.")
                             if not all_detected_frauds:
-                                st.warning("⚠️ Đã phát hiện gian lận nhưng không thể lấy danh sách chi tiết. Vui lòng khởi động lại Backend API.")
+                                st.warning("Đã phát hiện gian lận nhưng không thể lấy danh sách chi tiết. Vui lòng khởi động lại Backend API.")
                         else:
                             st.session_state.fraud_df_front = pd.DataFrame()
                             st.info(f"Hoàn tất! Không phát hiện gian lận trong {total:,} giao dịch.")

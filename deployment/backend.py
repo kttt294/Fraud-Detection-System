@@ -89,7 +89,7 @@ if os.path.exists(SCALER_PATH):
         scaler = pickle.load(f)
     print(f"--- Scaler loaded successfully from {SCALER_PATH} ---")
 else:
-    print(f"⚠️ Warning: Scaler Not Found at {SCALER_PATH}")
+    print(f"Warning: Scaler Not Found at {SCALER_PATH}")
 
 def get_db_connection():
     try:
@@ -269,8 +269,8 @@ async def verify_transaction(tx: Transaction):
             conn = get_db_connection()
             if conn:
                 # Phân loại bảng dựa trên nguồn gốc giao dịch
-                is_system = "HỆ THỐNG" in str(tx.source).upper() or "THỦ CÔNG" in str(tx.source).upper() or "QUÉT" in str(tx.source).upper()
-                target_table = "system_fraud_logs" if is_system else "api_fraud_logs"
+                # Đưa tất cả về bảng api_fraud_logs theo yêu cầu để hiện ở Giám sát Realtime
+                target_table = "api_fraud_logs"
                 
                 cur = conn.cursor()
                 cur.execute(

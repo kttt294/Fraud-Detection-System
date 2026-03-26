@@ -441,21 +441,20 @@ def process_prediction(amount, transaction_time, v_features, source="HỆ THỐN
             decision = "BLOCK" if prob > 0.5 else "APPROVE"
 
             if decision == "BLOCK":
-                # Bảo vệ UI: Chỉ ghi log nếu DB phản hồi nhanh, tránh treo nút bấm
+                # Bảo vệ UI: Chèn vào bảng api_fraud_logs để hiện ở danh sách Giám sát Realtime
                 try:
                     conn = get_db_connection()
                     if conn:
                         cur = conn.cursor()
-                        # Thiết lập timeout cho session để không đợi quá lâu
                         cur.execute("SET statement_timeout TO 2000") # 2s
                         cur.execute(
-                            "INSERT INTO system_fraud_logs (amount, time_val, v_features, fraud_probability, source) VALUES (%s, %s, %s, %s, %s)",
-                            (amount, time_val, json.dumps(v_features), prob, source)
+                            "INSERT INTO api_fraud_logs (amount, time_val, v_features, fraud_probability, source, confirmed) VALUES (%s, %s, %s, %s, %s, %s)",
+                            (amount, time_val, json.dumps(v_features), prob, source, False)
                         )
                         conn.commit()
                         cur.close()
                 except:
-                    pass # Bỏ qua ghi log nếu DB lỗi/chậm để hiện kết quả nhanh
+                    pass
             return {"decision": decision, "prob": f"{prob:.2%}"}
         except Exception as e:
             print(f"Error in prediction: {e}")
@@ -645,7 +644,7 @@ with col_right:
                 # Hiển thị kết quả ngoài Spinner
                 if res:
                     if "BLOCK" in res['decision']:
-                        st.error(f"⚠️ CẢNH BÁO: GIAN LẬN ({res['prob']} xác suất)")
+                        st.error(f"CẢNH BÁO: GIAN LẬN ({res['prob']} xác suất)")
                     else:
                         st.success(f"✅ HỢP LỆ ({res['prob']} xác suất gian lận)")
 
