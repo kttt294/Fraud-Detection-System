@@ -138,10 +138,11 @@ CSS_EMBEDDED = """
 }
 
 .stButton > button[data-testid="stBaseButton-primary"] {
-    min-width: 200px !important; 
+    width: 100% !important; 
     background-color: #38bdf8 !important;
     color: white !important; border-radius: 6px !important;
     border: none !important; font-weight: 600 !important;
+    font-size: 0.85rem !important;
     transition: all 0.2s ease !important;
 }
 
@@ -519,6 +520,7 @@ with col_left:
                 time_str = ts.strftime("%H:%M:%S") if isinstance(ts, datetime) else str(ts)
                 prob_str = prob if isinstance(prob, str) else f"{prob:.1%}"
 
+                # Định nghĩa badge trạng thái
                 if confirmed is True:
                     badge = '<span style="background:#dcfce7;color:#16a34a;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;">✓ ĐÃ XÁC NHẬN</span>'
                 elif confirmed is False:
@@ -526,24 +528,42 @@ with col_left:
                 else:
                     badge = '<span style="background:#fef9c3;color:#ca8a04;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;">⏳ CHỜ XÁC NHẬN</span>'
 
-                st.markdown(f"""
-                <div class="alert-card">
-                    <div class="alert-source">{src} &nbsp;{badge}</div>
-                    <div style="font-size:0.85rem; font-weight:600;">Giao dịch gian lận!</div>
-                    <div class="alert-meta">Số tiền: <b>€{amt:,.2f}</b> • Prob: <b>{prob_str}</b><br>{time_str}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
                 if confirmed is not True:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✅ Xác nhận", key=f"confirm_{log_id}", use_container_width=True):
-                            confirm_fraud_db(log_id, True)
-                            st.rerun()
-                    with c2:
-                        if st.button("❌ Báo giả", key=f"reject_{log_id}", use_container_width=True):
-                            confirm_fraud_db(log_id, False)
-                            st.rerun()
+                    # Container bao quanh mỗi Alert
+                    with st.container(border=True):
+                        st.markdown(f"""
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{src}</span>
+                            {badge}
+                        </div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 2px;">Giao dịch gian lận!</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px;">
+                            Số tiền: <b>€{amt:,.2f}</b> • Prob: <b>{prob_str}</b><br>
+                            🕒 {time_str}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("✅ Xác nhận", key=f"confirm_{log_id}", use_container_width=True):
+                                confirm_fraud_db(log_id, True)
+                                st.rerun()
+                        with c2:
+                            if st.button("❌ Báo giả", key=f"reject_{log_id}", use_container_width=True):
+                                confirm_fraud_db(log_id, False)
+                                st.rerun()
+                else:
+                    # Nếu đã xác nhận là Fraud thì chỉ hiện card tĩnh gọn gàng
+                    with st.container(border=True):
+                        st.markdown(f"""
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{src}</span>
+                            {badge}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
+                            Số tiền: <b>€{amt:,.2f}</b> • {time_str}
+                        </div>
+                        """, unsafe_allow_html=True)
 
         st.write("---")
 
@@ -562,7 +582,8 @@ with col_right:
             st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
             c_base1, b_base2 = st.columns([1, 1.2])
             with c_base1:
-                st.number_input("Số tiền (Amount)", value=100.0, step=None, key="amt_cloud")
+                st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Số tiền (Amount)</p>', unsafe_allow_html=True)
+                st.number_input("Số tiền", value=100.0, step=None, label_visibility="collapsed", key="amt_cloud")
             with b_base2:
                 st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Giờ giao dịch (H:M:S)</p>', unsafe_allow_html=True)
                 st.markdown('<div class="time-input-container">', unsafe_allow_html=True)

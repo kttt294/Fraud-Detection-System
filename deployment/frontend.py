@@ -131,10 +131,11 @@ with col_right:
         
         with tab1:
             st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
-            c_base1, c_base2 = st.columns(2)
+            c_base1, b_base2 = st.columns([1, 1.2])
             with c_base1:
-                st.number_input("Số tiền (Amount)", value=100.0, step=None, key="amt_front")
-            with c_base2:
+                st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Số tiền (Amount)</p>', unsafe_allow_html=True)
+                st.number_input("Số tiền", value=100.0, step=None, label_visibility="collapsed", key="amt_front")
+            with b_base2:
                 st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Giờ giao dịch (H:M:S)</p>', unsafe_allow_html=True)
                 st.markdown('<div class="time-input-container">', unsafe_allow_html=True)
                 tc1, tc2, tc3, _ = st.columns([1, 1, 1, 5])

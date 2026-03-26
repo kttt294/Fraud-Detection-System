@@ -158,10 +158,11 @@
 }
 
 .stButton > button[data-testid="stBaseButton-primary"] {
-    min-width: 200px !important; 
+    width: 100% !important; /* Co giãn theo container */
     background-color: #38bdf8 !important;
     color: white !important; border-radius: 6px !important;
     border: none !important; font-weight: 600 !important;
+    font-size: 0.85rem !important; /* Nhỏ hơn một chút để tránh tràn chữ */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
