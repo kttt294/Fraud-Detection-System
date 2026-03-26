@@ -127,11 +127,6 @@ CSS_EMBEDDED = """
     margin-bottom: 10px !important;
 }
 
-/* Thu nhỏ riêng 3 ô nhập giờ phút giây */
-.time-input-container [data-testid="stNumberInput"] {
-    max-width: 80px !important;
-}
-
 .stButton:has(> button[data-testid="stBaseButton-primary"]) {
     display: flex;
     justify-content: center;
@@ -177,25 +172,30 @@ CSS_EMBEDDED = """
     margin-bottom: 1rem;
 }
 
+/* FIX: Nút Xác nhận / Báo giả trong alert cards — width auto, không bóp méo */
 .stButton > button[data-testid="stBaseButton-secondary"] {
-    background-color: transparent !important;
-    border: none !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
     box-shadow: none !important;
-    color: #94a3b8 !important;
-    font-size: 1rem !important;
-    padding: 0 !important;
+    color: #64748b !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    padding: 4px 10px !important;
     min-width: unset !important;
-    width: 24px !important;
-    height: 24px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    width: auto !important;
+    height: 32px !important;
+    border-radius: 6px !important;
     transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    line-height: 1.4 !important;
 }
 
 .stButton > button[data-testid="stBaseButton-secondary"]:hover {
+    background-color: #fee2e2 !important;
+    border-color: #fca5a5 !important;
     color: #ef4444 !important;
-    transform: scale(1.1) !important;
 }
 
 span[data-baseweb="tag"], button[aria-label="Clear all"] {
@@ -206,11 +206,12 @@ div[data-testid="stNumberInput"] button {
     display: none !important;
 }
 
-/* Custom style for time inputs in columns */
+/* FIX: Label phụ cho ô giờ/phút/giây */
 .time-label {
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-bottom: 2px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 0 0 2px 0;
+    font-weight: 500;
 }
 </style>
 """
@@ -520,50 +521,28 @@ with col_left:
                 time_str = ts.strftime("%H:%M:%S") if isinstance(ts, datetime) else str(ts)
                 prob_str = prob if isinstance(prob, str) else f"{prob:.1%}"
 
-                # Định nghĩa badge trạng thái
-                if confirmed is True:
-                    badge = '<span style="background:#dcfce7;color:#16a34a;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;">✓ ĐÃ XÁC NHẬN</span>'
-                elif confirmed is False:
-                    badge = '<span style="background:#fee2e2;color:#ef4444;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;">✗ BÁO ĐỘNG GIẢ</span>'
-                else:
-                    badge = '<span style="background:#fef9c3;color:#ca8a04;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;">⏳ CHỜ XÁC NHẬN</span>'
+                # Hiển thị Card cảnh báo
+                with st.container(border=True):
+                    # Header: Source + Nút Xác nhận ở góc phải
+                    h1, h2 = st.columns([3, 1])
+                    with h1:
+                        st.markdown(f'<span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{src}</span>', unsafe_allow_html=True)
+                    with h2:
+                        if confirmed is True:
+                            st.markdown('<span style="background:#dcfce7;color:#16a34a;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:4px;display:block;text-align:center;">✓ ĐÃ XÁC NHẬN</span>', unsafe_allow_html=True)
+                        else:
+                            if st.button("Xác nhận", key=f"conf_btn_{log_id}", use_container_width=True):
+                                confirm_fraud_db(log_id, True)
+                                st.rerun()
 
-                if confirmed is not True:
-                    # Container bao quanh mỗi Alert
-                    with st.container(border=True):
-                        st.markdown(f"""
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                            <span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{src}</span>
-                            {badge}
-                        </div>
-                        <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 2px;">Giao dịch gian lận!</div>
-                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px;">
+                    # Body
+                    st.markdown(f"""
+                        <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 4px;">Giao dịch gian lận!</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
                             Số tiền: <b>€{amt:,.2f}</b> • Prob: <b>{prob_str}</b><br>
                             🕒 {time_str}
                         </div>
-                        """, unsafe_allow_html=True)
-
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            if st.button("✅ Xác nhận", key=f"confirm_{log_id}", use_container_width=True):
-                                confirm_fraud_db(log_id, True)
-                                st.rerun()
-                        with c2:
-                            if st.button("❌ Báo giả", key=f"reject_{log_id}", use_container_width=True):
-                                confirm_fraud_db(log_id, False)
-                                st.rerun()
-                else:
-                    # Nếu đã xác nhận là Fraud thì chỉ hiện card tĩnh gọn gàng
-                    with st.container(border=True):
-                        st.markdown(f"""
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{src}</span>
-                            {badge}
-                        </div>
-                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
-                            Số tiền: <b>€{amt:,.2f}</b> • {time_str}
-                        </div>
-                        """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
         st.write("---")
 
@@ -584,15 +563,21 @@ with col_right:
             with c_base1:
                 st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Số tiền (Amount)</p>', unsafe_allow_html=True)
                 st.number_input("Số tiền", value=100.0, step=None, label_visibility="collapsed", key="amt_cloud")
+
+            # FIX: Bỏ cột thứ 4 trống, dùng st.columns(3) chia đều — tránh 3 ô bị bóp
             with b_base2:
                 st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Giờ giao dịch (H:M:S)</p>', unsafe_allow_html=True)
-                st.markdown('<div class="time-input-container">', unsafe_allow_html=True)
-                tc1, tc2, tc3, _ = st.columns([1, 1, 1, 5])
                 now = datetime.now()
-                with tc1: h = st.number_input("H", min_value=0, max_value=23, value=now.hour, key="h_cloud", label_visibility="collapsed")
-                with tc2: m = st.number_input("M", min_value=0, max_value=59, value=now.minute, key="m_cloud", label_visibility="collapsed")
-                with tc3: s = st.number_input("S", min_value=0, max_value=59, value=now.second, key="s_cloud", label_visibility="collapsed")
-                st.markdown('</div>', unsafe_allow_html=True)
+                tc1, tc2, tc3 = st.columns(3)
+                with tc1:
+                    st.markdown('<p class="time-label">Giờ</p>', unsafe_allow_html=True)
+                    h = st.number_input("H", min_value=0, max_value=23, value=now.hour, key="h_cloud", label_visibility="collapsed")
+                with tc2:
+                    st.markdown('<p class="time-label">Phút</p>', unsafe_allow_html=True)
+                    m = st.number_input("M", min_value=0, max_value=59, value=now.minute, key="m_cloud", label_visibility="collapsed")
+                with tc3:
+                    st.markdown('<p class="time-label">Giây</p>', unsafe_allow_html=True)
+                    s = st.number_input("S", min_value=0, max_value=59, value=now.second, key="s_cloud", label_visibility="collapsed")
             
             selected_vs = st.multiselect(
                 "Chọn thêm đặc trưng để nhập dữ liệu:",

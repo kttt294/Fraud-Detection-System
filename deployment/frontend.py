@@ -84,34 +84,29 @@ with col_left:
 
                         # Container bao quanh mỗi Alert
                         with st.container(border=True):
-                            st.markdown(f"""
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                                    <span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{alert.get('source', 'API')}</span>
-                                    {badge}
-                                </div>
-                                <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 2px;">Giao dịch gian lận!</div>
-                                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px;">
-                                    Số tiền: <b>€{alert.get('amount', 0):,.2f}</b> • Prob: <b>{alert.get('fraud_probability', 0):.1%}</b><br>
-                                    🕒 {time_display}
-                                </div>
-                            """, unsafe_allow_html=True)
-
-                            if confirmed is not True:
-                                c1, c2 = st.columns(2)
-                                with c1:
-                                    if st.button("✅ Xác nhận", key=f"confirm_{log_id}", use_container_width=True):
+                            # Header: Source + Nút Xác nhận
+                            h1, h2 = st.columns([3, 1])
+                            with h1:
+                                st.markdown(f'<span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{alert.get("source", "API")}</span>', unsafe_allow_html=True)
+                            with h2:
+                                if confirmed is True:
+                                    st.markdown('<span style="background:#dcfce7;color:#16a34a;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:4px;display:block;text-align:center;">✓ ĐÃ XÁC NHẬN</span>', unsafe_allow_html=True)
+                                else:
+                                    if st.button("Xác nhận", key=f"conf_btn_{log_id}", use_container_width=True):
                                         try:
                                             requests.put(f"{API_BASE_URL}/confirm-fraud/{log_id}", json={"is_fraud": True}, timeout=3)
                                             st.rerun()
                                         except:
-                                            st.error("Lỗi kết nối!")
-                                with c2:
-                                    if st.button("❌ Báo giả", key=f"reject_{log_id}", use_container_width=True, type="secondary"):
-                                        try:
-                                            requests.put(f"{API_BASE_URL}/confirm-fraud/{log_id}", json={"is_fraud": False}, timeout=3)
-                                            st.rerun()
-                                        except:
-                                            st.error("Lỗi kết nối!")
+                                            st.error("Lỗi!")
+                            
+                            # Body
+                            st.markdown(f"""
+                                <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; margin-top: 4px;">Giao dịch gian lận!</div>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                                    Số tiền: <b>€{alert.get('amount', 0):,.2f}</b> • Prob: <b>{alert.get('fraud_probability', 0):.1%}</b><br>
+                                    🕒 {time_display}
+                                </div>
+                            """, unsafe_allow_html=True)
         except:
             st.warning("Đang kết nối tới Live API...")
         st.write("---")
