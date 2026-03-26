@@ -141,9 +141,14 @@
 
 /* Ô nhập liệu số (Nhỏ gọn) */
 [data-testid="stNumberInput"] {
-    max-width: 160px !important;
+    max-width: 100% !important; /* Mặc định cho Amount và các ô khác */
     margin-bottom: 10px !important;
     margin-top: -20px !important;
+}
+
+/* Thu nhỏ riêng 3 ô nhập giờ phút giây */
+.time-input-container [data-testid="stNumberInput"] {
+    max-width: 80px !important;
 }
 
 /* Nút bấm (Flat Design & Căn giữa) */
@@ -186,8 +191,8 @@
     line-height: 28px;
 }
 
-/* Container nút xóa: Kéo lên ngang hàng với tên đặc trưng */
-.stButton:has(> button[data-testid="stBaseButton-secondary"]) {
+/* Style riêng cho nút xóa (X) trong danh sách V-features */
+[data-testid="v_feature_container"] .stButton:has(> button[data-testid="stBaseButton-secondary"]) {
     margin-top: -28px !important;
     margin-bottom: 0 !important;
     justify-content: flex-end !important;

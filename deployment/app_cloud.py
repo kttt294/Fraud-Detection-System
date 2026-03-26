@@ -127,6 +127,11 @@ CSS_EMBEDDED = """
     margin-bottom: 10px !important;
 }
 
+/* Thu nhỏ riêng 3 ô nhập giờ phút giây */
+.time-input-container [data-testid="stNumberInput"] {
+    max-width: 80px !important;
+}
+
 .stButton:has(> button[data-testid="stBaseButton-primary"]) {
     display: flex;
     justify-content: center;
@@ -529,19 +534,15 @@ with col_left:
                 </div>
                 """, unsafe_allow_html=True)
 
-                if confirmed is None:
+                if confirmed is not True:
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.button("✅ Xác nhận", key=f"confirm_{log_id}", use_container_width=True):
                             confirm_fraud_db(log_id, True)
-                            st.success("Đã xác nhận!")
-                            time.sleep(1)
                             st.rerun()
                     with c2:
                         if st.button("❌ Báo giả", key=f"reject_{log_id}", use_container_width=True):
                             confirm_fraud_db(log_id, False)
-                            st.info("Đã đánh dấu báo giả!")
-                            time.sleep(1)
                             st.rerun()
 
         st.write("---")
@@ -564,11 +565,13 @@ with col_right:
                 st.number_input("Số tiền (Amount)", value=100.0, step=None, key="amt_cloud")
             with b_base2:
                 st.markdown('<p style="margin:0 0 4px 0;font-weight:600;font-size:0.9rem;color:#1e293b">Giờ giao dịch (H:M:S)</p>', unsafe_allow_html=True)
-                tc1, tc2, tc3 = st.columns(3)
+                st.markdown('<div class="time-input-container">', unsafe_allow_html=True)
+                tc1, tc2, tc3, _ = st.columns([1, 1, 1, 5])
                 now = datetime.now()
                 with tc1: h = st.number_input("H", min_value=0, max_value=23, value=now.hour, key="h_cloud", label_visibility="collapsed")
                 with tc2: m = st.number_input("M", min_value=0, max_value=59, value=now.minute, key="m_cloud", label_visibility="collapsed")
                 with tc3: s = st.number_input("S", min_value=0, max_value=59, value=now.second, key="s_cloud", label_visibility="collapsed")
+                st.markdown('</div>', unsafe_allow_html=True)
             
             selected_vs = st.multiselect(
                 "Chọn thêm đặc trưng để nhập dữ liệu:",
