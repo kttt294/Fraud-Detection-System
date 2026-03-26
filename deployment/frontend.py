@@ -28,8 +28,8 @@ st.markdown("""
     display: block !important;
     border-radius: 6px !important;
     font-weight: 600 !important;
-    font-size: 0.7rem !important; /* Đồng bộ kích thước */
-    height: 24px !important; /* Tăng nhẹ để cân xứng với chữ 0.7rem */
+    font-size: 0.55rem !important;
+    height: 22px !important;
     line-height: 1 !important;
     padding: 0 !important;
     background-color: #f1f5f9 !important;
@@ -140,7 +140,7 @@ with col_left:
                                 st.markdown(f'<span style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">{alert.get("source", "API")}</span>', unsafe_allow_html=True)
                             with h2:
                                 if confirmed is True:
-                                    st.markdown('<span style="background:#dcfce7;color:#16a34a;font-size:0.7rem;font-weight:700;padding:2px 4px;border-radius:4px;display:block;text-align:center;">ĐÃ XÁC NHẬN</span>', unsafe_allow_html=True)
+                                    st.markdown('<span style="background:#dcfce7;color:#16a34a;font-size:0.75rem;font-weight:700;padding:2px 4px;border-radius:4px;display:block;text-align:center;">ĐÃ XÁC NHẬN</span>', unsafe_allow_html=True)
                                 else:
                                     if st.button("Xác nhận", key=f"conf_btn_{log_id}", use_container_width=True):
                                         try:
