@@ -631,7 +631,10 @@ with col_right:
                         st.number_input(v_name, value=0.0, step=None, label_visibility="collapsed", key=f"val_{v_name}_cloud")
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Bắt đầu phân tích", type="primary", key="btn_cloud"):
+            _, center_col, _ = st.columns([1, 2, 1])
+            with center_col:
+                btn_clicked = st.button("Bắt đầu phân tích", type="primary", key="btn_cloud", use_container_width=True)
+            if btn_clicked:
                 res = None
                 with st.spinner("Hệ thống đang kiểm tra..."):
                     v_feats = [0.0]*28
