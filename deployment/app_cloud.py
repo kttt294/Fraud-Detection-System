@@ -250,6 +250,17 @@ div[data-testid="stNumberInput"] button {
     margin: 0 0 2px 0;
     font-weight: 500;
 }
+
+/* Ẩn logo/icon file trong file uploader (luôn luôn) */
+[data-testid="stFileUploaderFile"] svg {
+    display: none !important;
+}
+
+/* Ẩn tên file khi đang upload (progress bar đang hiện) */
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) small,
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) span {
+    display: none !important;
+}
 </style>
 """
 st.markdown(CSS_EMBEDDED, unsafe_allow_html=True)
