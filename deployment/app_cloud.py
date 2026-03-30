@@ -210,13 +210,13 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
     border: 1px solid #e2e8f0 !important;
     box-shadow: none !important;
     color: #64748b !important;
-    font-size: 0.8rem !important;
+    font-size: 0.65rem !important;
     font-weight: 600 !important;
-    padding: 4px 10px !important;
+    padding: 2px 8px !important;
     min-width: unset !important;
     width: auto !important;
-    height: 32px !important;
-    border-radius: 6px !important;
+    height: 24px !important;
+    border-radius: 4px !important;
     transition: all 0.2s ease !important;
     white-space: nowrap !important;
     overflow: visible !important;
