@@ -130,6 +130,7 @@ CSS_EMBEDDED = """
 .stButton:has(> button[data-testid="stBaseButton-primary"]) {
     display: flex;
     justify-content: center;
+    width: 100%;
 }
 
 /* Nút phụ - Xác nhận (Gray, Mini) */
@@ -150,10 +151,11 @@ CSS_EMBEDDED = """
     transition: all 0.2s ease !important;
 }
 
-/* Nút chính - Phân tích (Blue, To rõ ràng như cũ) */
-.stButton button[kind="primary"] {
-    width: 100% !important; 
-    max-width: none !important; /* Đảm bảo không bị giới hạn nút to */
+/* Nút chính - Phân tích (vừa với text) */
+.stButton button[data-testid="stBaseButton-primary"] {
+    width: auto !important;
+    min-width: unset !important;
+    padding: 0 28px !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
     font-size: 0.85rem !important;
