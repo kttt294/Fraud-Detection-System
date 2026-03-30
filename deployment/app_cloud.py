@@ -258,8 +258,22 @@ div[data-testid="stNumberInput"] button {
 
 /* Ẩn tên file khi đang upload (progress bar đang hiện) */
 [data-testid="stFileUploaderFile"]:has([role="progressbar"]) small,
-[data-testid="stFileUploaderFile"]:has([role="progressbar"]) span {
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) span,
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) p,
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) div:not(:has([role="progressbar"])) {
     display: none !important;
+}
+
+/* Căn giữa thanh tiến trình */
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+[data-testid="stFileUploaderFile"] [role="progressbar"] {
+    width: 80% !important;
+    margin: 0 auto !important;
 }
 </style>
 """
