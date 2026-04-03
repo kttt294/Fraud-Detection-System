@@ -130,6 +130,7 @@ CSS_EMBEDDED = """
 .stButton:has(> button[data-testid="stBaseButton-primary"]) {
     display: flex;
     justify-content: center;
+    width: 100%;
 }
 
 /* Nút phụ - Xác nhận (Gray, Mini) */
@@ -150,10 +151,11 @@ CSS_EMBEDDED = """
     transition: all 0.2s ease !important;
 }
 
-/* Nút chính - Phân tích (Blue, To rõ ràng như cũ) */
-.stButton button[kind="primary"] {
-    width: 100% !important; 
-    max-width: none !important; /* Đảm bảo không bị giới hạn nút to */
+/* Nút chính - Phân tích (vừa với text) */
+.stButton button[data-testid="stBaseButton-primary"] {
+    width: auto !important;
+    min-width: unset !important;
+    padding: 0 28px !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
     font-size: 0.85rem !important;
@@ -204,24 +206,27 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
     margin-bottom: 1rem;
 }
 
-/* FIX: Nút Xác nhận / Báo giả trong alert cards — width auto, không bóp méo */
+/* 1. Ép chiều cao nút chính xác */
 .stButton > button[data-testid="stBaseButton-secondary"] {
-    background-color: #f8fafc !important;
+    height: 28px !important;       /* Chiều cao thấp tương đương nút xanh */
+    min-height: 28px !important;   /* Quan trọng: Ghi đè min-height mặc định của Streamlit */
+    line-height: 28px !important;
+    padding: 0px 12px !important;  /* Giảm padding trên dưới về 0 */
+    
+    border-radius: 4px !important;
+    background-color: #f1f5f9 !important; /* Màu nền xám nhạt */
     border: 1px solid #e2e8f0 !important;
-    box-shadow: none !important;
-    color: #64748b !important;
-    font-size: 0.8rem !important;
+}
+
+/* 2. Triệt tiêu khoảng trống thừa của chữ bên trong */
+.stButton > button[data-testid="stBaseButton-secondary"] p {
+    font-size: 0.75rem !important; /* Cỡ chữ nhỏ lại */
+    margin-top: 0 !important;      /* Xóa lề trên */
+    margin-bottom: 0 !important;   /* Xóa lề dưới */
+    padding: 0 !important;
+    line-height: 1 !important;     /* Ép dòng chữ không chiếm thêm không gian */
     font-weight: 600 !important;
-    padding: 4px 10px !important;
-    min-width: unset !important;
-    width: auto !important;
-    height: 32px !important;
-    border-radius: 6px !important;
-    transition: all 0.2s ease !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
-    line-height: 1.4 !important;
+    text-transform: none !important; /* Giữ nguyên chữ thường/hoa */
 }
 
 .stButton > button[data-testid="stBaseButton-secondary"]:hover {
@@ -244,6 +249,31 @@ div[data-testid="stNumberInput"] button {
     color: #94a3b8;
     margin: 0 0 2px 0;
     font-weight: 500;
+}
+
+/* Ẩn logo/icon file trong file uploader (luôn luôn) */
+[data-testid="stFileUploaderFile"] svg {
+    display: none !important;
+}
+
+/* Ẩn tên file khi đang upload (progress bar đang hiện) */
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) small,
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) span,
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) p,
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) div:not(:has([role="progressbar"])) {
+    display: none !important;
+}
+
+/* Căn giữa thanh tiến trình */
+[data-testid="stFileUploaderFile"]:has([role="progressbar"]) {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+[data-testid="stFileUploaderFile"] [role="progressbar"] {
+    width: 80% !important;
+    margin: 0 auto !important;
 }
 </style>
 """
@@ -628,7 +658,10 @@ with col_right:
                         st.number_input(v_name, value=0.0, step=None, label_visibility="collapsed", key=f"val_{v_name}_cloud")
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Bắt đầu phân tích", type="primary", key="btn_cloud"):
+            _, center_col, _ = st.columns([1, 2, 1])
+            with center_col:
+                btn_clicked = st.button("Bắt đầu phân tích", type="primary", key="btn_cloud", use_container_width=True)
+            if btn_clicked:
                 res = None
                 with st.spinner("Hệ thống đang kiểm tra..."):
                     v_feats = [0.0]*28
@@ -653,8 +686,10 @@ with col_right:
             if up:
                 df = load_csv_data(up)
                 st.dataframe(df.head(), use_container_width=True)
-                st.markdown('<div class="center-btn">', unsafe_allow_html=True)
-                if st.button("Quét toàn bộ tập tin", type="primary", key="scan_cloud"):
+                _, scan_col, _ = st.columns([1, 2, 1])
+                with scan_col:
+                    scan_clicked = st.button("Quét toàn bộ tập tin", type="primary", key="scan_cloud", use_container_width=True)
+                if scan_clicked:
                     with st.spinner("Đang phân tích hàng loạt..."):
                         amt_col = 'Amount' if 'Amount' in df.columns else 'scaled_amount'
                         time_col = 'Time' if 'Time' in df.columns else 'scaled_time'
