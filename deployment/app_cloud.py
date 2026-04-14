@@ -281,7 +281,7 @@ st.markdown(CSS_EMBEDDED, unsafe_allow_html=True)
 FEATURE_COLUMNS = ['scaled_amount', 'scaled_time'] + [f'V{i}' for i in range(1, 29)]
 
 # =============================================================
-# Định nghĩa lại các Class để load model.pkl (bất kể module name)
+# Định nghĩa lại các Class để load model.pkl
 # =============================================================
 
 class FocalXGB(BaseEstimator, ClassifierMixin):
@@ -359,23 +359,11 @@ class FocalEnsembleXGB(BaseEstimator, ClassifierMixin):
     def predict(self, X):
         return (self.predict_proba(X)[:, 1] >= self.threshold).astype(int)
 
-class AutoTunerCV(BaseEstimator, ClassifierMixin):
-    """Stub để tương thích nếu load model đã qua AutoTunerCV."""
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items(): setattr(self, k, v)
-    def predict_proba(self, X):
-        raw = self.model_.predict_proba(X)[:, 1]
-        cal = self.calibrator_.predict(raw)
-        return np.vstack([1.0 - cal, cal]).T
-    def predict(self, X):
-        probs = self.predict_proba(X)[:, 1]
-        return (probs > self.best_threshold_).astype(int)
 
 class _CustomUnpickler(pickle.Unpickler):
     _MAP = {
         'FocalXGB': FocalXGB,
         'FocalEnsembleXGB': FocalEnsembleXGB,
-        'AutoTunerCV': AutoTunerCV,
     }
     def find_class(self, module, name):
         if name in self._MAP: return self._MAP[name]
