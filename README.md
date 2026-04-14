@@ -1,7 +1,6 @@
-<div align="center">
-
 # SafeGuard: Hệ Thống Phát Hiện Gian Lận Thẻ Tín Dụng
-(Credit Card Fraud Detection System)
+
+# **(Credit Card Fraud Detection System)**
 
 
 LINK COLAB CỦA DỰ ÁN:  *https://colab.research.google.com/drive/1EeArucOHdVqChyhmykQwrgyxkwX2VVGA*
@@ -11,13 +10,11 @@ LINK COLAB CỦA DỰ ÁN:  *https://colab.research.google.com/drive/1EeArucOHdV
 
 *Dự án Bài tập lớn Môn Học Máy - Đại học Phenikaa (Nhóm 3)*
 
-Giảng viên hướng dẫn: **PGS.TS. Phạm Tiến Lâm**
-
 Thành viên nhóm:
 
-**Kiều Thị Thu Trang** (24100093) - *Trưởng nhóm*
-**Trần Minh Sang** (24100012) - *Thành viên*
-**Ngô Quang Thiện** (24102651) - *Thành viên*
+* **Kiều Thị Thu Trang** (24100093) - *Trưởng nhóm*
+* **Trần Minh Sang** (24100012) - *Thành viên*
+* **Ngô Quang Thiện** (24102651) - *Thành viên*
 
 ---
 
