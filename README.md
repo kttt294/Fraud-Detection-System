@@ -1,5 +1,3 @@
-<div align="center">
-
 # SafeGuard: Hệ Thống Phát Hiện Gian Lận Thẻ Tín Dụng
 
 # **(Credit Card Fraud Detection System)**
@@ -11,8 +9,6 @@ LINK COLAB CỦA DỰ ÁN:  *https://colab.research.google.com/drive/1EeArucOHdV
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://kttt294-fraud-detection.streamlit.app) [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/) [![scikit-learn](https://img.shields.io/badge/scikit--learn-%23F7931E.svg?style=flat&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/) [![XGBoost](https://img.shields.io/badge/XGBoost-%231E90FF.svg?style=flat)](https://xgboost.readthedocs.io/)
 
 *Dự án Bài tập lớn Môn Học Máy - Đại học Phenikaa (Nhóm 3)*
-
-Giảng viên hướng dẫn: **PGS.TS. Phạm Tiến Lâm**
 
 Thành viên nhóm:
 
